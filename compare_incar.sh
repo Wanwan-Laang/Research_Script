@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# here I just want to compare the INCAR files in two folders. 
+
 # check if the number of arguments is correct
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <folder1> <folder2>"
