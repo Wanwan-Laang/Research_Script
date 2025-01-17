@@ -39,7 +39,7 @@ for subdir1 in "$folder1"/iter.000.*; do
     fi
 done
 
-# print message if no difference is found
+# print and tell if all INCAR files are identical
 if [ "$any_difference" -eq 0 ]; then
     echo "All INCAR files are identical across corresponding subdirectories."
 fi
