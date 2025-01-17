@@ -67,3 +67,8 @@ plt.tight_layout()
 
 #plt.savefig("flibe.png", dpi=1200)
 plt.show()
+
+# this file is used to calculate the radial distribution function (RDF) from a LAMMPS simulation output file    
+# the RDF is averaged over multiple time steps in the input file
+# you can customize the number of bins, the expected number of columns in the input file, and the labels and colors for each pair of atom types
+# you can also customize the labels of atom pairs to ignored pairs in the plot
