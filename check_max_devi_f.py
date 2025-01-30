@@ -7,7 +7,7 @@ from pathlib import Path
 iterations = [8, 9]  # surface
 # iterations = [0, 2, 4, 6]
 
-plt.figure(figsize=(8, 6))  # 設定圖表大小
+plt.figure(figsize=(8, 6)) 
 colors = ['blue', 'red', 'green', 'purple', 'orange']  
 linestyles = ['-', '--', '-.', ':'] 
 
