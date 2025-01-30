@@ -2,44 +2,70 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
+from pathlib import Path
 
-# Specify the number of iterations
-iterations = [8,9] 
-for i in iterations:
+iterations = [8, 9]  # surface
+# iterations = [0, 2, 4, 6]
 
-# If not specified and wanna check all the iterations, use the following code with range function
-#for i in range(5, 9): 
+plt.figure(figsize=(8, 6))  # 設定圖表大小
+colors = ['blue', 'red', 'green', 'purple', 'orange']  
+linestyles = ['-', '--', '-.', ':'] 
+
+for idx, i in enumerate(iterations):
     max_devi_f_values = []
-    # Dynamically determine the number of LAMMPS tasks, 
-    # So you don't need manually specify the number of MD. 
-    directory_pattern = "./iter.{:06d}/01.model_devi/task.*".format(i)
+    directory_pattern = f"./iter.{i:06d}/01.model_devi/task.*"
     task_directories = glob.glob(directory_pattern)
+
     for task_directory in task_directories:
-        file_path = os.path.join(task_directory, "model_devi.out")
-        if os.path.exists(file_path):
-            data = np.genfromtxt(file_path, skip_header=1, usecols=4)
-            max_devi_f_values.append(data)
+        file_path = Path(task_directory) / "model_devi.out"
+        if file_path.exists():
+            try:
+                data = np.genfromtxt(file_path, skip_header=1, usecols=4)
+                if data.size > 0:
+                    max_devi_f_values.append(data)
+            except Exception as e:
+                print(f"Warning: Unable to read {file_path}. Error: {e}")
 
-    max_devi_f_values = np.concatenate(max_devi_f_values)
+    if max_devi_f_values:
+        max_devi_f_values = np.concatenate(max_devi_f_values)
+    else:
+        print(f"Warning: No valid data found for iter {i}")
+        continue  # 跳過這次迭代
 
-    # Use numpy.histogram() to calculate the frequency of each calculated region
     hist, bin_edges = np.histogram(max_devi_f_values, range=(0, 0.25), bins=100)
+    hist = hist / len(max_devi_f_values) * 100  
 
-    # Normalize the frequency to percentage
-    hist = hist / len(max_devi_f_values) * 100
+    # 設定繪圖參數
+    plt.rcParams.update({
+        'font.weight': 'bold',
+        'axes.labelweight': 'bold',
+        'axes.linewidth': 2,
+        'axes.titlesize': 15,
+        'axes.labelsize': 15,
+        'legend.fontsize': 16,
+        'xtick.labelsize': 16,
+        'ytick.labelsize': 16
+    })
 
     plt.tick_params(axis='both', direction='in')
-    plt.plot(bin_edges[:-1], hist,label = 'iter{:02d}'.format(i),lw=4)
-    #plt.axvline(x=0.05, color='grey', linestyle='--')
-    #plt.xlim((min(bin_edges), max(bin_edges)))
-    #plt.ylim(-.2, 7.2)
+    plt.plot(bin_edges[:-1], hist, label=f'iter {i:02d}', lw=3,
+             color=colors[idx % len(colors)], linestyle=linestyles[idx % len(linestyles)])
+
+    # 加入參考線
+    plt.axvline(x=0.05, color='grey', linestyle='--', alpha=0.7, lw=1.5)
+    plt.axvline(x=0.10, color='grey', linestyle='-.', alpha=0.7, lw=1.5)
+    plt.axvline(x=0.15, color='grey', linestyle='--', alpha=0.7, lw=1.5)
+
+    plt.xlim((min(bin_edges), max(bin_edges)))
+    plt.ylim(0, max(hist) * 1.2)  # 讓 y 軸適應數據範圍
+    plt.grid(True, linestyle=":", alpha=0.5)  
     plt.legend()
-    plt.xlabel("max_devi_f eV/Å",fontsize=11)
-    plt.ylabel("Distribution %",fontsize=11)
+    plt.xlabel("max_devi_f (eV/Å)")
+    plt.ylabel("Distribution (%)")
 
-    with open(f'./iter{i:02d}_dist-max-devi-f.txt'.format(i), 'w') as f:
-        f.write("{:>12} {:>12}\n".format("bin_edges", "hist"))
-        for x, y in zip(bin_edges[:-1], hist):
-            f.write('{:>12.3f} {:>12.3f}\n'.format(x, y))
+    output_file = f'./iter{i:02d}_dist-max-devi-f.csv'
+    np.savetxt(output_file, np.column_stack((bin_edges[:-1], hist)), delimiter=",",
+               header="bin_edges,hist", fmt="%.6f")
+    print(f"Saved distribution data to {output_file}")
 
-plt.savefig('./max-devi-f.png',dpi=1200, bbox_inches='tight')
+plt.savefig('./max-devi-f.png', dpi=1200, bbox_inches='tight')
