@@ -1,5 +1,5 @@
 git status
-git add new-modified-file-here
+git add check_max_devi_f.py
 git commit -m "avoid error when use np.concatenate([]). save result in CSV file"
 git push 
 
