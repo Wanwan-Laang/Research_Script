@@ -1,6 +1,6 @@
 git status
-git add check_max_devi_f.py
-git commit -m "avoid error when use np.concatenate([]). save result in CSV file"
+git add LAMMPS
+git commit -m "Find the best cut-off for the overlap of ZBL and ML potentials"
 git push 
 
 git status
