@@ -1,0 +1,43 @@
+clear
+units metal
+boundary p p p
+atom_style atomic
+
+# the range of cut1 and cut2(Replace by Slurm file)
+variable cut1 equal 0.98
+variable cut2 equal 1.06
+
+variable files index ../add-structures-here/01.lmp ../add-structures-here/01.lmp
+variable outputfile string "energies_DPA_ZBL.txt"
+
+label loop_start
+clear
+units metal
+boundary p p p
+atom_style atomic
+
+variable inputname string ${files}
+variable outputfile string "energies_DPA_ZBL.txt"
+read_data ${inputname}
+
+mass 1 18.998  # F
+mass 2 9.0122  # Be
+mass 3 6.94    # Li
+
+pair_style hybrid/overlay deepmd ../DPA.pb zbl ${cut1} ${cut2}
+pair_coeff * * deepmd
+pair_coeff 1 1 zbl 9.0 9.0
+pair_coeff 1 2 zbl 9.0 4.0
+pair_coeff 1 3 zbl 9.0 3.0
+pair_coeff 2 2 zbl 4.0 4.0
+pair_coeff 2 3 zbl 4.0 3.0
+pair_coeff 3 3 zbl 3.0 3.0
+
+compute pe all pe
+run 0
+
+variable energy equal c_pe
+print "cut1=${cut1} cut2=${cut2}  File=${inputname}, Energy=${energy}" append ${outputfile}
+
+next files
+jump SELF loop_start
