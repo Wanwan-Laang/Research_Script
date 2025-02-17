@@ -1,3 +1,5 @@
+# this script sees to have been updated mistakenly, the original one is unfound.
+# date: 2023/10/12
 import os
 import numpy as np
 import matplotlib.pyplot as plt
