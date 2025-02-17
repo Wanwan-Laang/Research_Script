@@ -1,259 +1,226 @@
 # ------------------------------------------------------------
-# Modified PKA Collision Cascade Simulation Script
-# Date: 2025-02-14
+# FLiBe PKA 撞擊級聯模擬腳本（最終修正版）
+# 日期：2025-02-16
 # 說明：
-# 此腳本經由參數化管理、模組化區分不同階段、
-# 以及針對高能碰撞階段使用短時間步長等改善，
-# 旨在提升數值穩定性與後續分析的便利性。
+# 此腳本利用參數化管理與模組化設計，將模擬過程劃分為不同階段，
+# 並針對高能撞擊階段採用極短時間步長，以提升數值穩定性與後續數據分析便利性。
+# 此外，腳本中包含 dump 輸出、thermo 輸出及各種 compute 命令，
+# 可用於追蹤系統能量、溫度、原子位移（MSD）、徑向分布函數（RDF）等關鍵參數。
 # ------------------------------------------------------------
 
 # ============================================================
 # 1. 基本初始化與參數定義
 # ============================================================
-units           metal                      # 使用 metal 單位（長度：Å，時間：ps）
-dimension       3
-boundary        p p p                      # 全周期，若需要模擬自由表面，可調整其中某一方向
+units           metal                      # 設定模擬單位為 metal（長度單位：Å，時間單位：ps）
+dimension       3                          # 三維模擬
+boundary        p p p                      # 三個方向皆採用周期性邊界；若模擬表面則可將某一方向改為自由邊界
+atom_style      atomic                     # 使用原子屬性格式
 
-atom_style      atomic
+# 設定鄰居搜尋參數，2.0 Å 為 cutoff 距離，使用 bin 排序法
+neighbor        2.0 bin                    
+neigh_modify    delay 0 every 1 check yes  # 每步檢查是否需要重建鄰居列表
 
-# 設定鄰居搜尋參數
-neighbor        2.0 bin                    # 使用 cutoff 距離2.0 Å
-neigh_modify    delay 0 every 1 check yes  # 每步都檢查是否需要重建鄰居列表
+# 使用變數集中管理常用參數，便於修改與統一管理
+variable zbl_d1       equal 0.84         # ZBL 势參數 d1
+variable zbl_d2       equal 0.96         # ZBL 势參數 d2
+variable initTemp     equal 1000         # 初始溫度（單位：K）
+variable seed         equal 12345678     # 隨機種子
+variable rep          equal 10           # 複製晶胞的倍數
 
-# 使用變數集中管理常用參數，方便後續調參與修改
-variable latticeConst equal 4.36              # 鑽石晶格常數
-variable initTemp     equal 2000               # 初始溫度(K)
-variable seed         equal 52872745           # 隨機種子
-variable repX         equal 40                 # x方向複製倍數
-variable repY         equal 40                 # y方向複製倍數
-variable repZ         equal 50                 # z方向複製倍數
+# 定義內部區域邊界（方便後續修改）
+variable interior_min equal 10.0
+variable interior_max equal 76.1
 
-# 定義各模擬階段的時間步長（ps）
-variable ts_equil       equal 0.001          # 平衡階段：1 fs
-variable ts_collision   equal 0.00001        # 碰撞初期：0.01 fs
-variable ts_intermediate equal 0.0001         # 中間階段：0.1 fs
-variable ts_post        equal 0.001          # 後續演化：1 fs
+# 定義各階段時間步長（單位：ps）
+variable ts_equil         equal 0.001    # 平衡階段：1 fs
+variable ts_collision     equal 0.00001  # 碰撞初期：0.01 fs
+variable ts_intermediate  equal 0.0001   # 中間階段：0.1 fs
+variable ts_post          equal 0.001    # 後續演化：1 fs
 
-# 定義各階段步數（依照時間步長及總模擬時間調整）
-variable steps_equil       equal 10000      # 平衡階段：10,000步 → 約10 ps
-variable steps_collision   equal 20000      # 碰撞階段：20,000步 → 約0.2 ps（根據需求可調整至0.3 ps）
-variable steps_intermediate equal 18000     # 中間階段：18,000步 → 約1.8 ps
-variable steps_post        equal 10000      # 後續演化：10,000步 → 約10 ps
-
-# 定義 PKA（主激發原子）的參數：位置與速度
-variable pka_center_x equal 19.5
-variable pka_center_y equal 20.0
-variable pka_center_z equal 49.5
-variable pka_radius   equal 0.1                # PKA區域半徑
-variable pka_vx       equal 109.63             # PKA初始速度分量（Å/ps）
-variable pka_vy       equal 301.47
-variable pka_vz       equal -2603.62
-
-# 解釋：
-# 此部分利用變數統一管理關鍵參數，便於修改與後續記錄，
-# 同時確保不同模擬階段間參數一致性。
+# 定義各階段步數（根據總模擬時間調整）
+variable steps_equil        equal 10000   # 平衡階段：10000 步 → 約 10 ps
+variable steps_collision    equal 20000   # 碰撞瞬間：20000 步 → 約 0.2 ps
+variable steps_intermediate equal 20000   # 中間階段：20000 步 → 約 2 ps
+variable steps_post         equal 10000   # 後續演化：10000 步 → 約 10 ps
 
 # ============================================================
 # 2. 建立晶體結構與初始配置
 # ============================================================
-lattice         diamond ${latticeConst}
-read_data       data.sic
+read_data      conf.lmp                # 從 conf.lmp 讀取結構（單胞結構）
 
-# 賦予原子質量
-mass            1 12.0107        # type 1：碳
-mass            2 28.0855        # type 2：矽
+mass 1 18.998                           # F 的質量
+mass 2 9.0122                           # Be 的質量
+mass 3 6.94                             # Li 的質量
 
-# 初始化原子速度：使用高溫分布（Gaussian分布），保證總動量為零
+# 初始化所有原子速度，採用 Gaussian 分布並保證總動量為零
 velocity        all create ${initTemp} ${seed} mom yes rot yes dist gaussian units box
 
-# 複製晶胞以建立大系統
-replicate       ${repX} ${repY} ${repZ}
-
-# 解釋：
-# 這部分設定晶體結構、原子質量與初始速度，同時利用replicate擴大系統尺寸，
-# 方便捕捉碰撞級聯效應。
+# 複製晶胞以建立大系統，便於捕捉撞擊級聯效應
+replicate       ${rep} ${rep} ${rep}
 
 # ============================================================
 # 3. 势函數定義
 # ============================================================
-pair_style      tersoff/zbl
-pair_coeff      * * SiC.tersoff.zbl C Si
-
-# 解釋：
-# 使用tersoff/zbl勢，能同時考慮化學鍵與高能短程斥力。
-# 注意要確保參數文件(SiC.tersoff.zbl)適用於你的能量範圍。
+# 使用 hybrid/overlay 势函數結合 deepmd 與 ZBL 势
+pair_style hybrid/overlay deepmd compress.pb zbl ${zbl_d1} ${zbl_d2}
+pair_coeff * * deepmd
+pair_coeff 1 1 zbl 9.0 9.0
+pair_coeff 1 2 zbl 9.0 4.0
+pair_coeff 1 3 zbl 9.0 3.0
+pair_coeff 2 2 zbl 4.0 4.0
+pair_coeff 2 3 zbl 4.0 3.0
+pair_coeff 3 3 zbl 3.0 3.0
 
 # ============================================================
 # 4. 區域與群組定義
 # ============================================================
-# 定義全域區域
+# 定義整個系統範圍
 region          rallatoms block INF INF INF INF INF INF
 
-# 定義內部區域（參數化區域邊界，方便日後修改）
-variable interior_min equal 3.9
-variable interior_max equal 35.9
-# 將 z 方向下限設定為 interior_min，上限用 INF 表示無限大
+# 定義內部區域：以變數 interior_min 與 interior_max 為邊界，z 方向下限為 interior_min，上限為無限大
 region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF
 
 # 定義外部區域：取內部區域之外的原子（side out）
 region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF side out
 
-# 定義 PKA 插入區域：球形區域方便定位與修改
-region          rPKA sphere ${pka_center_x} ${pka_center_y} ${pka_center_z} ${pka_radius}
-
-# 建立群組：方便後續針對特定區域或類型進行分析
-group           PKA         region rPKA
-group           PKAinterior region rinterior
-group           interior  subtract PKAinterior PKA
-group           exterior  region rexterior
-group           Ctype     type 1
-group           Cinterior intersect Ctype interior
-group           Sitype    type 2
-group           Siinterior intersect Sitype interior
-
-# 解釋：
-# 將各區域與群組定義模組化、參數化，使得改變邊界時只需修改變數，
-# 也方便對不同區域進行能量、溫度與缺陷分析。
+# 定義 PKA 插入區域：使用球形區域方便定位與修改
+# 此處選定的球心為 (21.5, 21.5, 140.0)，半徑為 1.5 Å；若模擬表面撞擊則需調整區域與邊界設定
+region          rPKA sphere 21.5 21.5 140.0 1.5
 
 # ============================================================
-# 5. 能量最小化與初步平衡
+# 5. PKA 設定（速度與能量）
+# ============================================================
+# 手動選擇 PKA 類型，此處預設為 F（質量 18.998）
+variable pka_mass   equal 18.998
+
+# 設定 PKA 能量（單位依 metal 單位，約 10 keV）
+variable pka_energy equal 10000
+
+# 利用能量公式計算 PKA 速度： v = sqrt(2*E/(m*103.6427))
+variable pka_v equal sqrt(2*${pka_energy}/(${pka_mass}*103.6427))
+
+# 設定 PKA 運動方向，此處設定為 z 軸負方向（向下）
+variable pka_dir_x equal 0
+variable pka_dir_y equal 0
+variable pka_dir_z equal -1
+
+# 計算方向向量的模，使用雙引號以確保表達式正確解析，並使用 v_ 前綴引用變數
+variable norm equal "sqrt(v_pka_dir_x*v_pka_dir_x + v_pka_dir_y*v_pka_dir_y + v_pka_dir_z*v_pka_dir_z)"
+
+# 根據方向向量歸一化，計算 PKA 的速度分量
+variable pka_vx equal "v_pka_v*(v_pka_dir_x/v_norm)"
+variable pka_vy equal "v_pka_v*(v_pka_dir_y/v_norm)"
+variable pka_vz equal "v_pka_v*(v_pka_dir_z/v_norm)"
+
+# 指定 PKA 原子：利用 rPKA 區域選取，並將計算得到的速度賦予該群組
+group PKA region rPKA
+velocity PKA set ${pka_vx} ${pka_vy} ${pka_vz} units box
+
+# ============================================================
+# 6. 能量最小化
 # ============================================================
 timestep        ${ts_equil}
-run             0    # 初始化積分器狀態
+dump            01 interior custom 100 dump.start.min id type xu yu zu  # 輸出最小化前的結構
+run             0                         # 寫入當前結構數據
+undump          01                        # 停止 dump 01
 
-min_style       sd
-minimize        1.0e-12 1.0e-12 5000 5000
+min_style       sd                        # 使用 Steepest Descent 最小化法
+minimize        1.0e-12 1.0e-12 5000 5000  # 執行能量最小化
 
-# 解釋：
-# 先進行能量最小化以消除初始結構中的不合理應力，
-# 為後續平衡及動力學模擬打好基礎。
+dump            02 interior custom 100 dump.start.postmin id type xu yu zu  # 輸出最小化後的結構
+run             0                         # 寫入最小化後的結構數據
+undump          02                        # 停止 dump 02
 
 # ============================================================
-# 6. 定義計算量與診斷命令
+# 7. 定義計算量與診斷命令
 # ============================================================
-# 計算各區域的溫度（方便觀察局部加熱或散熱狀況）
-compute         ex       exterior temp
-compute         PKAin    PKAinterior temp
-compute         in       interior temp
+# 計算各區域溫度，便於觀察局部加熱與散熱狀況
+compute         ex       exterior temp       # 外部區域溫度
+compute         PKAin    PKAinterior temp      # PKA 內部區域溫度
+compute         in       interior temp         # 內部區域溫度
 
-# 針對內部原子計算位能、動能及配位數（用於識別結構缺陷）
-compute         peInt    interior pe/atom
-compute         coordInt interior coord/atom 2.2    # cutoff選擇2.2 Å，參照相關文獻
+# 針對內部區域計算每個原子的位能與動能，便於識別結構缺陷
+compute         peInt    interior pe/atom      
 compute         keInt    interior ke/atom
 
-# 對 PKA 原子單獨計算動能與位能
+# 分別計算 PKA 原子的位能與動能
 compute         kePKA    PKA ke/atom
 compute         pePKA    PKA pe/atom
 
-# 計算缺陷聚集指標（cluster/atom）及RDF
-compute         clusterInt interior cluster/atom 2.2
-compute         rdfInt     interior rdf 100
-fix             RDF      interior ave/time 100 1 100 c_rdfInt file sic.txt mode vector
+# 計算內部區域的徑向分布函數（RDF），用於結構分析；此處分別對不同原子對進行統計
+compute         rdfInt   interior rdf 100 1 1 1 2 1 3 2 2 2 3 3 3
+fix             RDF      interior ave/time 100 1 100 c_rdfInt[*] file rdf_out.txt mode vector
 
-# 計算 PKA 位移與內部原子的均方位移（MSD）
+# 計算 PKA 原子的位移（displacement）以及各組 F、Be、Li 原子的均方位移（MSD）
 compute         displacePKA PKA displace/atom
-compute         msdC        Cinterior msd com yes
-compute         msdSi       Siinterior msd com yes
+compute         msdF        Finterior msd com yes
+compute         msdBe       Beinterior msd com yes
+compute         msdLi       Liinterior msd com yes
 
-# 定義模擬時間變數
-variable        simTime equal elapsed*dt
-
-# 解釋：
-# 此部分設置多種計算命令，便於後續追蹤能量分佈、溫度變化與缺陷生成，
-# 也方便 dump 輸出關鍵數據進行後處理分析。
-
-# ============================================================
-# 7. 平衡階段（Equilibration） - 使用 Langevin 熱浴
-# ============================================================
+# 設定模擬時間變數：T 為總模擬時間（elapsed 步數乘當前 timestep）
 timestep        ${ts_equil}
-fix             1 all nve
-fix             2 all langevin ${initTemp} ${initTemp} 0.001 2346326 zero yes
+variable        T equal elapsed*dt
 
+# ============================================================
+# 8. 平衡階段（Equilibration） - 使用 Langevin 熱浴
+# ============================================================
+fix             1 all nve                     # 使用 NVE 積分
+fix             2 all langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes  # 加入 Langevin 熱浴控制溫度
 thermo          100
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal
-
-run             ${steps_equil}
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+run             ${steps_equil}                # 執行平衡模擬
 unfix           2
 
-# 補充：針對外部區域額外加熱浴（若需要加速散熱），這裡再次施加 Langevin 力場
-fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 2346326 zero yes
-thermo          100
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
-dump            1 interior custom 1000 dump.start id type xu yu zu c_coordInt c_keInt peInt
-
+# 補充：對外部區域額外施加 Langevin 力場以加速散熱
+fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
 run             ${steps_equil}
-undump          1
 unfix           3
 
-# 解釋：
-# 平衡階段使用 NVE 整體積分，再加上 Langevin 散熱以控制溫度，
-# 並利用 dump 及 thermo 輸出監控系統狀態。這樣可保證初始狀態處於熱平衡。
-
 # ============================================================
-# 8. PKA 插入：給予高能速度
+# 9. PKA 插入：再次賦予 PKA 高速以觸發撞擊
 # ============================================================
 velocity        PKA set ${pka_vx} ${pka_vy} ${pka_vz} units box
 
-# 解釋：
-# 將位於 rPKA 區域的原子（即 PKA）賦予極高的速度，觸發碰撞級聯事件。
-# 速度方向及大小應根據物理模型或實驗數據選定。
-
 # ============================================================
-# 9. 碰撞初期階段（Collision Phase） - 使用極短時間步長
+# 10. 碰撞初期階段（Collision Phase） - 使用極短時間步長
 # ============================================================
-# 為避免高能碰撞過程中的數值不穩定，先使用極短時間步長
-fix             4 all recenter INIT INIT INIT units box  # 保持系統中心不移動
-fix             5 all momentum 1 linear 1 1 1 angular     # 去除總動量和角動量漂移
-
+# 為避免高能撞擊過程中的數值不穩定，使用極短時間步長精確追蹤動力學
+fix             4 all recenter INIT INIT INIT units box    # 重新平移，保持系統中心不變
+fix             5 all momentum 1 linear 1 1 1 angular       # 消除系統總動量和角動量漂移
 timestep        ${ts_collision}
 thermo          10
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdC[4] c_msdSi[4]
-thermo_modify   lost warn
-
-dump            2 interior custom 100 dump.init id type xu yu zu c_coordInt c_keInt peInt
+thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+thermo_modify   lost warn                             # 輸出丟失原子警告，但不中斷模擬
+dump            2 interior custom 100 dump.init id type xu yu zu c_peInt c_keInt
 dump            3 PKA custom 100 dump.PKA.init id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
-
-run             ${steps_collision}
+run             ${steps_collision}                     # 執行碰撞初期模擬
 undump          2
 undump          3
 
-# 解釋：
-# 碰撞初期，由於系統內存在極大加速度與力場變化，
-# 故採用非常小的時間步長來精確追蹤碰撞動力學，並透過修正動量與重心避免數值漂移。
-
 # ============================================================
-# 10. 中間階段（Intermediate Phase） - 逐步過渡至較長時間步長
+# 11. 中間階段（Intermediate Phase） - 過渡至較長時間步長
 # ============================================================
 timestep        ${ts_intermediate}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdC[4] c_msdSi[4]
-
-dump            4 interior custom 100 dump.peak id type xu yu zu c_coordInt c_keInt peInt
-
-run             ${steps_intermediate}
+thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+dump            4 interior custom 100 dump.peak id type xu yu zu c_peInt c_keInt
+run             ${steps_intermediate}                  # 執行中間階段模擬
 undump          4
 
-# 解釋：
-# 中間階段使用略大一點的時間步長，目的是讓系統逐漸從劇烈碰撞狀態中放鬆，
-# 並捕捉系統達到局部平衡或出現缺陷聚集的過程。
-
 # ============================================================
-# 11. 後續演化（Post-collision Phase） - 恢復標準時間步長進行演化
+# 12. 後續演化階段（Post-collision Phase） - 恢復標準時間步長進行演化
 # ============================================================
 timestep        ${ts_post}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdC[4] c_msdSi[4]
-
-dump            6 interior custom 100 dump.final id type xu yu zu c_coordInt c_keInt peInt
-
-run             ${steps_post}
+thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+dump            6 interior custom 100 dump.final id type xu yu zu c_peInt c_keInt
+run             ${steps_post}                        # 執行後續演化模擬
 undump          6
-
-# 解釋：
-# 後續演化階段恢復至標準時間步長，讓系統進一步緩慢放鬆並達到熱平衡，
-# 同時便於觀察碰撞後缺陷演變及能量重新分布情況。
 
 # ============================================================
 # 結束模擬
 # ============================================================
-
+# 解釋：
+# 後續演化階段恢復至標準時間步長，讓系統進一步緩慢放鬆並達到熱平衡，
+# 同時便於觀察碰撞後缺陷演變及能量重新分布情況。
+# 最終輸出包括能量、溫度、位移等關鍵參數，便於後續分析與研究。
