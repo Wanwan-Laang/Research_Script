@@ -1,0 +1,134 @@
+# Initialization
+units           metal				  # sets units to 'metal' units - Atomic units w/ ps timescale
+dimension	3
+boundary	p p p		          # periodic BCs on x,y plane faces, z dimension fixed volume
+atom_style	atomic		          # default attribute style
+neighbor	2.0	bin		  # sets maximum neighbor search radius to cutoff value, using bin-sort algorithm
+neigh_modify    delay 0 every 1 check yes 	  # checks if neighbor list should be rebuilt after and every 5 steps
+
+# Create geometry using internal stuff
+lattice		diamond 4.36     
+read_data       data.sic
+mass	        1	12.0107		                         # type 1 = C
+mass	        2	28.0855		                         # type 2 = Si
+variable        t equal 2000
+velocity        all create $t 52872745 mom yes rot yes dist gaussian units box
+replicate       40 40 50
+
+# Define potential
+pair_style	tersoff/zbl
+pair_coeff      * *  SiC.tersoff.zbl C Si
+
+# Groups
+region	        rallatoms block INF INF INF INF INF INF
+region		rinterior block 3.9 35.9 3.9 35.9 3.9 INF                  #4 46 4 46 4 INF
+region		rexterior block 3.9 35.9 3.9 35.9 3.9 INF side out
+region		rPKA sphere 19.5 20 49.5 0.1  #4.5 5 9.5 0.1                    #25 24.5 49.5 0.1
+group           PKA region rPKA                     
+group           PKAinterior region rinterior
+group           interior subtract PKAinterior PKA 
+group           exterior region rexterior
+group              Ctype type 1
+group              Cinterior intersect Ctype interior
+group              Sitype type 2
+group              Siinterior intersect Sitype interior
+
+#optimize the initial system
+#dump		00 interior custom 100 dump.start.0 id type xu yu zu 
+timestep        0.001
+run             0
+#undump          00
+
+#dump            01 interior custom 100 dump.start.min id type xu yu zu 
+min_style       sd
+minimize        1.0e-12 1.0e-12  5000  5000
+#undump          01
+
+# Setting
+compute         ex exterior temp
+compute         PKAin PKAinterior temp
+compute         in interior temp
+compute         1 interior pe/atom
+compute         2 interior coord/atom 2.2                 #based on the "Thermal effects in 10keV Si PKA cascades in 3C-SiC"
+compute         3 interior ke/atom
+compute         4 PKA ke/atom
+compute         5 PKA pe/atom
+compute         6 interior cluster/atom 2.2               #based on the "Thermal effects in 10keV Si PKA cascades in 3C-SiC"
+compute         7 interior rdf 100
+fix             RDF interior ave/time 100 1 100 c_7 file sic.txt mode vector
+compute         8 PKA displace/atom
+compute         9 Cinterior msd com yes
+compute            10 Siinterior msd com yes
+
+timestep        0.001
+variable        T equal elapsed*dt
+
+#run the system dynamicaly
+timestep        0.001
+fix             1 all nve                    
+fix             2 all langevin $t $t 0.001 2346326 zero yes 
+thermo          100
+thermo_style    custom v_T elapsed dt step temp c_ex c_in c_PKAin pe etotal 
+#dump		02 interior custom 100 dump.start.1 id type xu yu zu c_2 c_3 c_1
+run             10000                                                     # run the equilibriation phase 10ps
+unfix           2
+#undump          02
+
+timestep        0.001
+fix             3 exterior langevin $t $t 0.001 2346326 zero yes #2235252
+thermo          100
+thermo_style    custom v_T elapsed dt step temp c_ex c_in c_PKAin pe etotal press 
+#dump            0 PKA custom 100 dump.PKA.start id type xu yu zu c_4 c_5 c_8[4]
+dump		1 interior custom 1000 dump.start id type xu yu zu c_2 c_3 c_1 
+#dump            2 all custom 100 dump.start.all.start id type xu yu zu 
+run             10000	                                                 # run the equilibriation phase 10ps
+#undump          0
+undump          1
+#undump          2
+ 
+#insert a Si as PKA mass=4.65*10-26 energy=10keV velocity=2623.3 A/PS 
+velocity        PKA set 109.63 301.47 -2603.62 units box              #direction [4 11 -95]   
+ 
+# set timestep to smaller value for initial phase of collisions (from 0.001fs to 1fs)
+#fix             5 interior dt/reset 100 0.000001 0.001 0.3 units box
+fix             4 all recenter INIT INIT INIT units box 
+fix             5 all momentum 1 linear 1 1 1 angular
+timestep        0.00001          
+thermo          10
+thermo_style    custom v_T elapsed dt step c_in c_ex temp c_PKAin  etotal c_9[4] c_10[4] 
+thermo_modify   lost warn
+dump		2 interior custom 100 dump.init id type xu yu zu c_2 c_3 c_1 
+dump            3 PKA custom 100 dump.PKA.init id type xu yu zu c_4 c_5 c_8[4]
+#dump            4 all custom 100 dump.start.all.init id type xu yu zu 
+# run the collisional phase for 0.3 ps
+run           20000                                                                                                                                                                                                                                                                                       
+undump          2   
+undump          3
+#undump          4                     
+
+# run intermediate phase with intermediate timestep (0.01fs for 1.5ps)
+timestep        0.0001
+thermo          100
+thermo_style    custom v_T elapsed dt step c_in c_ex temp c_PKAin  etotal c_9[4] c_10[4]  
+dump		4 interior custom 100 dump.peak id type xu yu zu c_2 c_3 c_1 
+#dump            5 PKA custom 100 dump.PKA.peak id type xu yu zu c_4 c_5 c_8[4]
+#dump            6 all custom 100 dump.start.all.peak id type xu yu zu 
+run             18000                                       
+undump          4
+#undump          5
+#undump          6
+
+# after initial phase, let evolve for remainder of time  using 1 fs  timestep (1 fs for 10ps)
+timestep        0.001
+thermo          100
+thermo_style    custom v_T elapsed dt step c_in c_ex temp c_PKAin  etotal c_9[4] c_10[4]  
+dump		6 interior custom 100 dump.final id type xu yu zu c_2 c_3 c_1 
+#dump            7 PKA custom 100 dump.PKA.final id type xu yu zu c_4 c_5 c_8[4]
+#dump            8 all custom 100 dump.start.all.final id type xu yu zu 
+run             10000  
+undump          6
+#undump          7
+#undump          8
+
+ 
+
