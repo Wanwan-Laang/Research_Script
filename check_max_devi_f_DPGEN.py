@@ -30,7 +30,7 @@ for idx, i in enumerate(iterations):
         max_devi_f_values = np.concatenate(max_devi_f_values)
     else:
         print(f"Warning: No valid data found for iter {i}")
-        continue  # 跳過這次迭代
+        continue  
 
     hist, bin_edges = np.histogram(max_devi_f_values, range=(0, 0.25), bins=100)
     hist = hist / len(max_devi_f_values) * 100  
@@ -57,7 +57,7 @@ for idx, i in enumerate(iterations):
     plt.axvline(x=0.15, color='grey', linestyle='--', alpha=0.7, lw=1.5)
 
     plt.xlim((min(bin_edges), max(bin_edges)))
-    plt.ylim(0, max(hist) * 1.2)  # 讓 y 軸適應數據範圍
+    plt.ylim(0, max(hist) * 1.2)                    # 讓 y 軸適應數據範圍
     plt.grid(True, linestyle=":", alpha=0.5)  
     plt.legend()
     plt.xlabel("max_devi_f (eV/Å)")
