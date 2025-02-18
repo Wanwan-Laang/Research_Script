@@ -1,76 +1,80 @@
-# this script sees to have been updated mistakenly, the original one is unfound.
-# date: 2023/10/12
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 rdf_file = "flibe.rdf"
-output_file = "rdf.txt"
+output_file = "averaged_rdf.txt"
 
-nbins = 100  
-expected_column_count = 14  
-# the first column is the bin center, the next 13 columns are the g(r) values for each pair of atom types
+nbins = 100
+expected_column_count = 14
+g_indices = [2, 4, 6, 8, 10, 12]
 
-rdf_data = np.zeros((nbins, expected_column_count - 1))  
-count = 0 
+rdf_data = np.zeros((nbins, len(g_indices) + 1))
+frame_count = 0
 
 print(f"Reading RDF file: {rdf_file}")
 with open(rdf_file, "r") as f:
-    lines = f.readlines()[3:]  
+    lines = f.readlines()[3:]
 
-    for line in lines:
-        nums = line.split()
-        if len(nums) == expected_column_count: 
-            for i in range(1, expected_column_count):  
-                rdf_data[int(nums[0]) - 1, i - 1] += float(nums[i])
-        elif len(nums) == 2:  # 時間步長行
-            count += 1
-        else:
-            print(f"Warning: Skipping line due to unexpected column count: {line.strip()}")
+line_idx = 0
+while line_idx < len(lines):
+    line = lines[line_idx].strip()
+    if len(line.split()) == 2:
+        frame_count += 1
+        line_idx += 1
+        for i in range(nbins):
+            data_line = lines[line_idx].strip().split()
+            if len(data_line) == expected_column_count:
+                rdf_data[i, 0] += float(data_line[1])
+                for col_idx, g_idx in enumerate(g_indices):
+                    rdf_data[i, col_idx + 1] += float(data_line[g_idx])
+            else:
+                raise ValueError(f"Unexpected data format at line {line_idx + 1}: {lines[line_idx]}")
+            line_idx += 1
+    else:
+        raise ValueError(f"Unexpected format in line {line_idx + 1}: {line}")
 
-if count > 0:
-    rdf_data[:, 1:] /= count  
-    print(f"RDF data successfully averaged over {count} accumulations.")
+if frame_count > 0:
+    rdf_data /= frame_count
+    print(f"RDF data successfully averaged over {frame_count} frames.")
 else:
-    raise ValueError("No valid RDF data found in the file.")
+    raise ValueError("No valid frames found in the file.")
 
 np.savetxt(output_file, rdf_data, header="r g(1-1) g(1-2) g(1-3) g(2-2) g(2-3) g(3-3)", comments='')
 print(f"Averaged RDF data saved to {output_file}")
 
-labels = ['F-F', 'F-Be', 'F-Li', 'Be-Be', 'Be-Li', 'Li-Li']
-colors = ['blue', 'orange', 'purple', 'red', 'green', 'brown']
-ignore_labels = ['F-Be','Be-Be','Li-Li']  # Manually select pairs to ignore
+plt.rcParams.update({
+    'font.family': 'Times New Roman',
+    'font.weight': 'bold',
+    'axes.labelweight': 'bold',
+    'axes.linewidth': 2,
+    'axes.titlesize': 15,
+    'axes.labelsize': 15,
+    'legend.fontsize': 16,
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 16
+})
 
-# set the font family and weight for the plot
-plt.rcParams['font.family'] = 'Times New Roman'
-plt.rcParams['font.weight'] = 'bold'
-plt.rcParams['axes.labelweight'] = 'bold'
-plt.rcParams['axes.linewidth'] = 2    # linewidth of the frame
-plt.rcParams['axes.titlesize'] = 15   # title size
-plt.rcParams['axes.labelsize'] = 15   # label size
-plt.rcParams['legend.fontsize'] = 16  # legend size
-plt.rcParams['xtick.labelsize'] = 16  # x axis tick size
-plt.rcParams['ytick.labelsize'] = 16  # y axis tick size
-
+labels_to_plot = ['F-F', 'F-Be', 'F-Li']
+all_labels = ['F-F', 'F-Be', 'F-Li', 'Be-Be', 'Li-Be', 'Li-Li']
+colors = ['red', 'green', 'blue', 'purple', 'orange', 'cyan']
 
 plt.figure(figsize=(8, 6))
+for i, (label, color) in enumerate(zip(all_labels, colors)):
+    if label in labels_to_plot:
+        plt.plot(
+            rdf_data[:, 0], rdf_data[:, i + 1],
+            label=label, color=color, linewidth=2.5,
+            marker='*', markersize=10,
+            markevery=max(1, len(rdf_data) // 35)
+        )
 
-for i, (label, color) in enumerate(zip(labels, colors)):
-    if label not in ignore_labels: 
-#        plt.plot(rdf_data[:, 0], rdf_data[:, i + 1], label=label, color=color, linewidth=3)
-        plt.plot(rdf_data[:, 0], rdf_data[:, i + 1], label=label, color=color, linewidth=2.5, marker='*', markersize=10, markevery=max(1, len(rdf_data) // 35))
-plt.ylim(0, 11) 
-plt.xlim(0, max(rdf_data[:, 0])) 
+plt.ylim(0, 11)
+plt.xlim(0, 6)
 plt.xlabel("r (Å)")
 plt.ylabel("g(r)")
-plt.title("Radial Distribution Function")
+plt.title("Radial Distribution Function for FLiBe")
 plt.legend()
 plt.tight_layout()
 
-#plt.savefig("flibe.png", dpi=1200)
+#plt.savefig("rdf-atten", dpi=1200, bbox_inches='tight')
 plt.show()
-
-# this file is used to calculate the radial distribution function (RDF) from a LAMMPS simulation output file    
-# the RDF is averaged over multiple time steps in the input file
-# you can customize the number of bins, the expected number of columns in the input file, and the labels and colors for each pair of atom types
-# you can also customize the labels of atom pairs to ignored pairs in the plot
