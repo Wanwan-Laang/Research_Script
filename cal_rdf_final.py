@@ -1,49 +1,49 @@
 # ------------------------------------------------------------
 # FLiBe Radial Distribution Function (RDF) Analysis Script
 # Date: 2025-02-17
-# 說明：
-# 此腳本用於處理 LAMMPS 輸出的 RDF 數據，並進行平均化與可視化。
-# 包含數據讀取、平均計算、儲存及繪圖等功能。
+# Description:
+# This script processes RDF data output from LAMMPS, performs averaging, and visualizes the results.
+# It includes data reading, averaging, saving, and plotting functionalities.
 # ------------------------------------------------------------
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 # ============================================================
-# 1. 參數設定
+# 1. Parameter Settings
 # ============================================================
 
-rdf_file        = "flibe.rdf"               # LAMMPS 輸出的 RDF 文件
-output_file     = "averaged_rdf.txt"        # 儲存 RDF 平均值的文件
+rdf_file        = "flibe.rdf"               # RDF file output from LAMMPS
+output_file     = "averaged_rdf.txt"        # File to save averaged RDF values
 
-# 設定 RDF 分佈參數
-nbins               = 100                   # RDF 的徑向分佈 bins 數量
-expected_column_count = 14                  # RDF 文件的列數 (根據 LAMMPS 設定)
-g_indices           = [2, 4, 6, 8, 10, 12]  # RDF g(r) 數據對應的列索引
+# RDF distribution parameters
+nbins           = 100                       # Number of bins for RDF
+expected_column_count = 14                  # Number of columns in RDF file (based on LAMMPS settings)
+g_indices       = [2, 4, 6, 8, 10, 12]      # Column indices for RDF g(r) data
 
-# 初始化 RDF 數據儲存矩陣 (第一列為 r 值)
+# Initialize RDF data storage matrix (first column for r values)
 rdf_data = np.zeros((nbins, len(g_indices) + 1))
-frame_count = 0                             # 記錄 RDF 幀數
+frame_count = 0                             # Count of RDF frames
 
 # ============================================================
-# 2. 讀取 RDF 數據
+# 2. Read RDF Data
 # ============================================================
 print(f"Reading RDF file: {rdf_file}")
 with open(rdf_file, "r") as f:
-    lines = f.readlines()[3:]               # 跳過前 3 行 (標題資訊)
+    lines = f.readlines()[3:]               # Skip the first 3 lines (header information)
 
 line_idx = 0
 while line_idx < len(lines):
     line = lines[line_idx].strip()
-    if len(line.split()) == 2:              # 檢測新幀標記
+    if len(line.split()) == 2:              # Detect new frame marker
         frame_count += 1
         line_idx += 1
         for i in range(nbins):
             data_line = lines[line_idx].strip().split()
             if len(data_line) == expected_column_count:
-                rdf_data[i, 0] += float(data_line[1])  # r 值
+                rdf_data[i, 0] += float(data_line[1])  # r value
                 for col_idx, g_idx in enumerate(g_indices):
-                    rdf_data[i, col_idx + 1] += float(data_line[g_idx])  # RDF 值
+                    rdf_data[i, col_idx + 1] += float(data_line[g_idx])  # RDF value
             else:
                 raise ValueError(f"Unexpected data format at line {line_idx + 1}: {lines[line_idx]}")
             line_idx += 1
@@ -51,25 +51,25 @@ while line_idx < len(lines):
         raise ValueError(f"Unexpected format in line {line_idx + 1}: {line}")
 
 # ============================================================
-# 3. 計算 RDF 平均值
+# 3. Calculate RDF Averages
 # ============================================================
 if frame_count > 0:
-    rdf_data /= frame_count                 # 除以總幀數以獲得平均值
+    rdf_data /= frame_count                 # Divide by total frame count to get averages
     print(f"RDF data successfully averaged over {frame_count} frames.")
 else:
     raise ValueError("No valid frames found in the file.")
 
 # ============================================================
-# 4. 儲存 RDF 平均數據
+# 4. Save Averaged RDF Data
 # ============================================================
 np.savetxt(output_file, rdf_data, header="r g(1-1) g(1-2) g(1-3) g(2-2) g(2-3) g(3-3)", comments='')
 print(f"Averaged RDF data saved to {output_file}")
 
 # ============================================================
-# 5. 設定 Matplotlib 參數
+# 5. Set Matplotlib Parameters
 # ============================================================
 plt.rcParams.update({
-#    'font.family':       'Times New Roman',
+    'font.family':       'Times New Roman',
     'font.weight':       'bold',
     'axes.labelweight':  'bold',
     'axes.linewidth':    2,
@@ -81,10 +81,10 @@ plt.rcParams.update({
 })
 
 # ============================================================
-# 6. 繪製 RDF 圖像
+# 6. Plot RDF Graph
 # ============================================================
 
-# 定義要繪製的 RDF 類型
+# Define RDF types to plot
 labels_to_plot  = ['F-F', 'F-Be', 'F-Li']
 all_labels      = ['F-F', 'F-Be', 'F-Li', 'Be-Be', 'Li-Be', 'Li-Li']
 colors          = ['red', 'green', 'blue', 'purple', 'orange', 'cyan']
@@ -107,7 +107,7 @@ plt.legend()
 plt.tight_layout()
 
 # ============================================================
-# 7. 儲存與顯示圖像
+# 7. Save and Show Plot
 # ============================================================
 plt.savefig("rdf-atten.png", dpi=1200, bbox_inches='tight')
 plt.show()
