@@ -4,7 +4,7 @@ import dpdata
 
 ### **Step 1: 计算 F-Li 逐步缩小的距离，并存入 txt 文件** ###
 moving_atom_coords = np.array([8.1038967418, 3.9422009685, 7.8977365798])  # 需要移动的原子
-fixed_f_coords = np.array([7.4446380149, 2.3267454550, 6.9173398169])  # 固定的原子
+fixed_f_coords = np.array([7.4446380149, 2.3267454550, 6.9173398169])      # 固定的原子
 
 target_distance = 0.4  # 最小目标距离 (Å)
 num_steps = 9 
@@ -36,14 +36,14 @@ print(f"🎯 结果已保存至: {distance_file}")
 
 
 ### **Step 2: 读取 txt 文件，并修改 LAMMPS 结构** ###
-input_filename = "../eq/conf1.lmp"  # 原始 LAMMPS 结构文件
-output_dir = "mod_stru"  # 生成的新结构文件夹
+input_filename = "../eq/conf1.lmp"           # 原始 LAMMPS 结构文件
+output_dir = "mod_stru"                      # 生成的新结构文件夹
 os.makedirs(output_dir, exist_ok=True)
 
 # 读取新的 Li 原子坐标
 new_coordinates = []
 with open(distance_file, "r") as dist_file:
-    lines = dist_file.readlines()[1:]  # 跳过表头
+    lines = dist_file.readlines()[1:]       # 跳过表头
     for line in lines:
         parts = line.strip().split()
         new_coordinates.append([float(parts[1]), float(parts[2]), float(parts[3])])
