@@ -159,7 +159,7 @@ compute         msdLi       Liinterior msd com yes
 
 # 設定模擬時間變數：T 為總模擬時間（elapsed 步數乘當前 timestep）
 timestep        ${ts_equil}
-variable        T equal elapsed*dt
+variable        simTime equal elapsed*dt
 
 # ============================================================
 # 8. 平衡階段（Equilibration） - 使用 Langevin 熱浴
