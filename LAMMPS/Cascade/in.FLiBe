@@ -100,6 +100,7 @@ minimize        1.0e-12 1.0e-12 5000 5000
 dump            02 interior custom 100 dump.start.postmin id type xu yu zu 
 run             0                    # 寫入最小化後的結構
 undump          02                   
+dump            0 PKA custom 100 dump.equal id type xu yu zu 
 
 # ============================================================
 # 7. 定義計算量與診斷命令
