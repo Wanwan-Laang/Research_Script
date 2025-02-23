@@ -7,6 +7,7 @@
 # 旨在提升數值穩定性與後續分析的便利性。
 # ------------------------------------------------------------
 # fix error: Thermo compute does not compute vector 
+# fix error: Compute reduce compute msdF does not calculate per-atom values
 
 # ============================================================
 # 1. 基本初始化與參數定義
@@ -30,11 +31,11 @@ variable interior_min equal 10.0
 variable interior_max equal 76.1
 
 # 定義各模擬階段的時間步長（ps）
-variable ts_equil         equal 0.001          # 平衡階段：1 fs
-variable ts_collision     equal 0.00001        # 碰撞初期：0.01 fs
-variable ts_intermediate  equal 0.0001         # 中間階段：0.1 fs
-variable ts_post          equal 0.001          # 後續演化：1 fs
-
+variable ts_equil           equal 0.001          # 平衡階段：1 fs
+variable ts_collision       equal 0.00001        # 碰撞初期：0.01 fs
+variable ts_intermediate    equal 0.0001         # 中間階段：0.1 fs
+variable ts_post            equal 0.001          # 後續演化：1 fs
+  
 # 定義各階段步數（依照時間步長及總模擬時間調整）
 variable steps_equil        equal 10000      # 平衡階段：10,000步 →  10 ps
 variable steps_collision    equal 20000      # 碰撞瞬間：20,000步 →  0.2 ps
@@ -123,12 +124,12 @@ compute         msdF        Finterior msd com yes
 compute         msdBe       Beinterior msd com yes
 compute         msdLi       Liinterior msd com yes
 
-compute         msdF_total  Finterior  reduce ave c_msdF[4]
-compute         msdBe_total Beinterior reduce ave c_msdBe[4]
-compute         msdLi_total Liinterior reduce ave c_msdLi[4]
+variable        msdF_total  equal c_msdF[4]
+variable        msdBe_total equal c_msdBe[4]
+variable        msdLi_total equal c_msdLi[4]
 
 timestep        ${ts_equil}
-variable        simTime equal elapsed*dt
+variable        simTime     equal elapsed*dt
 
 # ============================================================
 # 8. 平衡階段（Equilibration）
@@ -185,7 +186,7 @@ fix             5 all momentum 1 linear 1 1 1 angular
 
 timestep        ${ts_collision}
 thermo          10
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] v_msdF_total v_msdBe_total v_msdLi_total
 thermo_modify   lost warn   #提醒丟失原子情況，不中斷模擬.
 
 dump            2 interior custom 100 dump.init id type xu yu zu c_peInt c_keInt
@@ -199,7 +200,7 @@ undump          3
 # ============================================================
 timestep        ${ts_intermediate}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] v_msdF_total v_msdBe_total v_msdLi_total
 dump            4 interior custom 100 dump.peak id type xu yu zu c_peInt c_keInt
 run             ${steps_intermediate}
 undump          4
@@ -209,7 +210,7 @@ undump          4
 # ============================================================
 timestep        ${ts_post}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] v_msdF_total v_msdBe_total v_msdLi_total
 dump            6 interior custom 100 dump.final id type xu yu zu c_peInt c_keInt
 run             ${steps_post}
 undump          6
