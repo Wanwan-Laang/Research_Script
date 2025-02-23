@@ -1,6 +1,6 @@
 git status
 git add LAMMPS
-git commit -m "modifty LAMMPS Cascade script"
+git commit -m "modifty LAMMPS submit-cpu script"
 git push 
 
 git status
