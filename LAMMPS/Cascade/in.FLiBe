@@ -6,7 +6,7 @@
 # 以及針對高能碰撞階段使用短時間步長等改善，
 # 旨在提升數值穩定性與後續分析的便利性。
 # ------------------------------------------------------------
-# 修訂了
+# fix error: Thermo compute does not compute vector 
 
 # ============================================================
 # 1. 基本初始化與參數定義
@@ -101,7 +101,6 @@ minimize        1.0e-12 1.0e-12 5000 5000
 dump            02 interior custom 100 dump.start.postmin id type xu yu zu 
 run             0                    # 寫入最小化後的結構
 undump          02                   
-dump            0 PKA custom 100 dump.equal id type xu yu zu 
 
 # ============================================================
 # 7. 定義計算量與診斷命令
@@ -124,6 +123,10 @@ compute         msdF        Finterior msd com yes
 compute         msdBe       Beinterior msd com yes
 compute         msdLi       Liinterior msd com yes
 
+compute         msdF_total  Finterior  reduce ave c_msdF[4]
+compute         msdBe_total Beinterior reduce ave c_msdBe[4]
+compute         msdLi_total Liinterior reduce ave c_msdLi[4]
+
 timestep        ${ts_equil}
 variable        simTime equal elapsed*dt
 
@@ -141,6 +144,7 @@ unfix           2
 fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
 run             ${steps_equil}
 unfix           3
+dump            0 PKA custom 100 dump.equal id type xu yu zu 
 
 # ============================================================
 # 9. PKA 插入 我會手動選擇 PKA 類型（此處選 F，質量 18.998）
@@ -151,7 +155,7 @@ variable pka_mass   equal 18.998
 variable pka_energy equal 10000  
 
 # 利用能量公式計算 PKA 速度
-# 注意：公式中的常數 103.6427 為單位換算常數
+# 注意：103.6427 為metal單位換算常數,  
 variable pka_v equal sqrt(2*${pka_energy}/(${pka_mass}*103.6427))
 
 # 設定 PKA 方向（此處選定 z 方向為 -1，即向下）
@@ -181,7 +185,7 @@ fix             5 all momentum 1 linear 1 1 1 angular
 
 timestep        ${ts_collision}
 thermo          10
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
 thermo_modify   lost warn   #提醒丟失原子情況，不中斷模擬.
 
 dump            2 interior custom 100 dump.init id type xu yu zu c_peInt c_keInt
@@ -195,7 +199,7 @@ undump          3
 # ============================================================
 timestep        ${ts_intermediate}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
 dump            4 interior custom 100 dump.peak id type xu yu zu c_peInt c_keInt
 run             ${steps_intermediate}
 undump          4
@@ -205,16 +209,7 @@ undump          4
 # ============================================================
 timestep        ${ts_post}
 thermo          100
-thermo_style    custom v_simTime elapsed dt step c_in c_ex temp c_PKAin etotal c_displacePKA[4] c_msdF[4] c_msdBe[4] c_msdLi[4]
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal c_displacePKA[4] c_msdF_total c_msdBe_total c_msdLi_total
 dump            6 interior custom 100 dump.final id type xu yu zu c_peInt c_keInt
 run             ${steps_post}
 undump          6
-
-
-# ============================================================
-# 結束模擬
-# ============================================================
-# 解釋：
-# 後續演化階段恢復至標準時間步長，讓系統進一步緩慢放鬆並達到熱平衡，
-# 同時便於觀察碰撞後缺陷演變及能量重新分布情況。
-# 最終輸出包括能量、溫度、位移等關鍵參數，便於後續分析與研究。
