@@ -1,6 +1,6 @@
 git status
 git add LAMMPS
-git commit -m "Find the best cut-off for the overlap of ZBL and ML potentials"
+git commit -m "modifty LAMMPS"
 git push 
 
 git status
