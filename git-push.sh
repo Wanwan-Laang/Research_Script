@@ -1,6 +1,6 @@
 git status
 git add LAMMPS
-git commit -m "modifty LAMMPS submit-cpu script"
+git commit -m "make ZiH workspace"
 git push 
 
 git status
