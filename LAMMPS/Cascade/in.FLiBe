@@ -39,12 +39,12 @@ variable ts_intermediate    equal 0.0001         # 中間階段：0.1 fs
 variable ts_post            equal 0.001          # 後續演化：1 fs
   
 # 定義各階段步數（依照時間步長及總模擬時間調整）
-variable steps_equil        equal 10000      # 平衡階段：10,000步 →  10 ps
-variable steps_collision    equal 20000      # 碰撞瞬間：20,000步 →  0.2 ps
-variable steps_intermediate equal 20000      # 中間階段：20,000步 →  2 ps
-variable steps_post         equal 10000      # 後續演化：10,000步 →  10 ps
+variable steps_equil        equal 10000          # 平衡階段：10,000步 →  10 ps
+variable steps_collision    equal 20000          # 碰撞瞬間：20,000步 →  0.2 ps
+variable steps_intermediate equal 20000          # 中間階段：20,000步 →  2 ps
+variable steps_post         equal 10000          # 後續演化：10,000步 →  10 ps
 
-variable thermo_step        equal 100
+variable thermo_step        equal 100            # 設定熱力學輸出步長
 
 # ============================================================
 # 2. 建立晶體結構與初始配置
@@ -79,7 +79,7 @@ pair_coeff 3 3 zbl 3.0 3.0
 region          rallatoms block INF INF INF INF INF INF
 region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF
 region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF side out
-region          rPKA sphere 21.5 21.5 140.0 1.5 # 區域設置為0.25～0.75 倍之間就好, z上的話就靠近。表面的話就更近些，比如150.0
+region          rPKA sphere 43 43 150.0 1.5 # 區域設置為中間就好, z上的話就靠近。表面的話就更近些，比如150.0
 
 group           PKA region rPKA                     
 group           PKAinterior region rinterior
@@ -110,18 +110,18 @@ undump          02
 # ============================================================
 # 7. 定義計算量與診斷命令
 # ============================================================
-compute         ex       exterior temp
-compute         PKAin    PKAinterior temp
-compute         in       interior temp
+compute         ex          exterior temp
+compute         PKAin       PKAinterior temp
+compute         in          interior temp
+   
+compute         peInt       interior pe/atom
+compute         keInt       interior ke/atom
+   
+compute         kePKA       PKA ke/atom
+compute         pePKA       PKA pe/atom
 
-compute         peInt    interior pe/atom
-compute         keInt    interior ke/atom
-
-compute         kePKA    PKA ke/atom
-compute         pePKA    PKA pe/atom
-
-compute         rdfInt     interior rdf ${thermo_step} 1 1 1 2 1 3 2 2 2 3 3 3
-fix             RDF        interior ave/time ${thermo_step} 1 ${thermo_step} c_rdfInt[*] file rdf_out.txt mode vector
+compute         rdfInt      interior rdf ${thermo_step} 1 1 1 2 1 3 2 2 2 3 3 3
+fix             RDF         interior ave/time ${thermo_step} 1 ${thermo_step} c_rdfInt[*] file rdf_out.txt mode vector
 
 compute         displacePKA PKA displace/atom
 compute         msdF        Finterior msd com yes
@@ -152,7 +152,7 @@ thermo          ${thermo_step}
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
 run             ${steps_equil}
 unfix           3
-dump            0 PKA custom 1000 dump.equal id type xu yu zu 
+dump            0 PKA custom ${steps_equil} dump.equal id type xu yu zu 
 
 # ============================================================
 # 9. PKA 插入 我會手動選擇 PKA 類型（此處選 F，質量 18.998）
