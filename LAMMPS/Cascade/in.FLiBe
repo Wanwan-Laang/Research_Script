@@ -44,6 +44,8 @@ variable steps_collision    equal 20000      # 碰撞瞬間：20,000步 →  0.2
 variable steps_intermediate equal 20000      # 中間階段：20,000步 →  2 ps
 variable steps_post         equal 10000      # 後續演化：10,000步 →  10 ps
 
+variable thermo_step        equal 100
+
 # ============================================================
 # 2. 建立晶體結構與初始配置
 # ============================================================
@@ -94,14 +96,14 @@ group           Liinterior intersect Liitype interior
 # 6. 能量最小化
 # ============================================================
 timestep        ${ts_equil}
-dump            01 interior custom 100 dump.start.min id type xu yu zu 
+dump            01 interior custom ${thermo_step} dump.start.min id type xu yu zu 
 run             0                    # 寫入最小化前的結構
 undump          01                   
 
 min_style       sd
 minimize        1.0e-12 1.0e-12 5000 5000
 
-dump            02 interior custom 100 dump.start.postmin id type xu yu zu 
+dump            02 interior custom ${thermo_step} dump.start.postmin id type xu yu zu 
 run             0                    # 寫入最小化後的結構
 undump          02                   
 
@@ -118,8 +120,8 @@ compute         keInt    interior ke/atom
 compute         kePKA    PKA ke/atom
 compute         pePKA    PKA pe/atom
 
-compute         rdfInt     interior rdf 100 1 1 1 2 1 3 2 2 2 3 3 3
-fix             RDF        interior ave/time 100 1 100 c_rdfInt[*] file rdf_out.txt mode vector
+compute         rdfInt     interior rdf ${thermo_step} 1 1 1 2 1 3 2 2 2 3 3 3
+fix             RDF        interior ave/time ${thermo_step} 1 ${thermo_step} c_rdfInt[*] file rdf_out.txt mode vector
 
 compute         displacePKA PKA displace/atom
 compute         msdF        Finterior msd com yes
@@ -139,14 +141,14 @@ variable        simTime     equal elapsed*dt
 timestep        ${ts_equil}
 fix             1 all nve
 fix             2 all langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
-thermo          100
+thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal 
 run             ${steps_equil}
 unfix           2
 
 timestep        ${ts_equil}
 fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
-thermo          100
+thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
 run             ${steps_equil}
 unfix           3
@@ -194,8 +196,8 @@ thermo          10
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal v_msdF_total v_msdBe_total v_msdLi_total
 thermo_modify   lost warn   #提醒丟失原子情況，不中斷模擬.
 
-dump            2 interior custom 100 dump.init id type xu yu zu c_peInt c_keInt
-dump            3 PKA custom 100  dump.PKA.init id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            2 interior custom ${thermo_step} dump.init id type xu yu zu c_peInt c_keInt
+dump            3 PKA custom ${thermo_step}  dump.PKA.init id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
 run             ${steps_collision}
 undump          2
 undump          3
@@ -204,10 +206,10 @@ undump          3
 # 11. 中間階段
 # ============================================================
 timestep        ${ts_intermediate}
-thermo          100
+thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal v_msdF_total v_msdBe_total v_msdLi_total
-dump            4 interior custom 100 dump.peak id type xu yu zu c_peInt c_keInt
-dump            5 PKA custom 100  dump.PKA.peak id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            4 interior custom ${thermo_step} dump.peak id type xu yu zu c_peInt c_keInt
+dump            5 PKA custom ${thermo_step}  dump.PKA.peak id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
 
 run             ${steps_intermediate}
 undump          4
@@ -217,10 +219,10 @@ undump          5
 # 12. 後續演化
 # ============================================================
 timestep        ${ts_post}
-thermo          100
+thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin etotal v_msdF_total v_msdBe_total v_msdLi_total
-dump            6 interior custom 100 dump.final id type xu yu zu c_peInt c_keInt
-dump            7 PKA custom 100  dump.PKA.final id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            6 interior custom ${thermo_step} dump.final id type xu yu zu c_peInt c_keInt
+dump            7 PKA custom ${thermo_step}  dump.PKA.final id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
 run             ${steps_post}
 undump          6
 undump          7
