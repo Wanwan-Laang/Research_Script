@@ -1,6 +1,6 @@
 git status
 git add LAMMPS
-git commit -m "modified LAMMPS cascade"
+git commit -m "modified LAMMPS cascade on thermo"
 git push 
 
 git status
