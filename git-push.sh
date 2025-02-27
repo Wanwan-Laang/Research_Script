@@ -1,6 +1,6 @@
 git status
 git add LAMMPS
-git commit -m "make ZiH workspace"
+git commit -m "modified LAMMPS cascade"
 git push 
 
 git status
