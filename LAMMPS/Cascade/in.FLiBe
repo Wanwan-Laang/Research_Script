@@ -9,6 +9,7 @@
 # fix error: Thermo compute does not compute vector 
 # fix error: Compute reduce compute msdF does not calculate per-atom values
 
+
 # ============================================================
 # 1. 基本初始化與參數定義
 # ============================================================
@@ -142,10 +143,13 @@ thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etota
 run             ${steps_equil}
 unfix           2
 
+timestep        ${ts_equil}
 fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
+thermo          100
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
 run             ${steps_equil}
 unfix           3
-dump            0 PKA custom 100 dump.equal id type xu yu zu 
+dump            0 PKA custom 1000 dump.equal id type xu yu zu 
 
 # ============================================================
 # 9. PKA 插入 我會手動選擇 PKA 類型（此處選 F，質量 18.998）
