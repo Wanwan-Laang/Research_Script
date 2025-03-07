@@ -160,11 +160,11 @@ dump            0 PKA custom ${steps_equil} dump.equal id type xu yu zu
 variable pka_mass   equal 18.998  
 
 # 設定 PKA 能量
-variable pka_energy equal 10000  
+variable pka_energy equal 10000  # eV
 
 # 利用能量公式計算 PKA 速度
-# 注意：103.6427 為metal單位換算常數,  
-variable pka_v equal sqrt(2*${pka_energy}/(${pka_mass}*103.6427))
+# 注意：103.6427 為metal單位換算常數,原來是 Å/fs（寫錯了） 就變成 Å/ps，（metal）  
+variable pka_v equal sqrt(2*${pka_energy}/(${pka_mass}*103.6427))*1000
 
 # 設定 PKA 方向（此處選定 z 方向為 -1，即向下）
 variable pka_dir_x equal 0
