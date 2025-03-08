@@ -6,6 +6,7 @@
 #SBATCH --ntasks-per-node=128   # the number of tasks per node 
 #SBATCH --partition=zlab
 
+export OMP_NUM_THREADS=1
 export TF_INTRA_OP_PARALLELISM_THREADS=1
 export TF_INTER_OP_PARALLELISM_THREADS=1
 
