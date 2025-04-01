@@ -1,0 +1,7 @@
+1. vaspkit 405 ➡️   2) y <-> z  
+cp POSCAR_REV-YZ.vasp POSCAR
+
+2. vaspkit 801 ➡️ 801: 3) z direction ➡️ Input the Vacuum Thickness: 10    
+mv POSCAR_REV.vasp POSCAR_REV-YZ-10Vacuum.vasp
+
+cp POSCAR_REV-YZ-10Vacuum.vasp ../00.structure/POSCAR
