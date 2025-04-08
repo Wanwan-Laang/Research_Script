@@ -1,7 +1,7 @@
 
 # parse_PKA_energy_dissipation.py
 # Parse kinetic & potential energy of PKA over time from LAMMPS dump
-
+# 追蹤 PKA 的動能/勢能變化
 import matplotlib.pyplot as plt
 import numpy as np
 
