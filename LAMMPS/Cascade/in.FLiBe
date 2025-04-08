@@ -10,6 +10,7 @@
 # fix error: Compute reduce compute msdF does not calculate per-atom values
 # fix error：dump c_displacePKA rather than  Thermo compute
 # add PotEng for final three states
+##### do not forget to adjust the box region when change replicate box ######
 
 # ============================================================
 # 1. 基本初始化與參數定義
