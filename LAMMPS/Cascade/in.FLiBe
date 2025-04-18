@@ -1,6 +1,6 @@
 # ------------------------------------------------------------
-# FLiBe PKA Collision Cascade Simulation Script (修正中)
-# Date: 2025-02-14
+# FLiBe PKA Collision Cascade Simulation Script (最終修正)
+# Date: 2025-02-27
 # 說明：
 # 此腳本經由參數化管理、模組化區分不同階段，
 # 以及針對高能碰撞階段使用短時間步長等改善，
@@ -9,8 +9,7 @@
 # fix error: Thermo compute does not compute vector 
 # fix error: Compute reduce compute msdF does not calculate per-atom values
 # fix error：dump c_displacePKA rather than  Thermo compute
-# add PotEng for final three states
-##### do not forget to adjust the box region when change replicate box ######
+
 
 # ============================================================
 # 1. 基本初始化與參數定義
@@ -37,20 +36,20 @@ variable interior_max equal 76.1
 variable ts_equil           equal 0.001          # 平衡階段：1 fs
 variable ts_collision       equal 0.00001        # 碰撞初期：0.01 fs
 variable ts_intermediate    equal 0.0001         # 中間階段：0.1 fs
-variable ts_post            equal 0.001          # 後續演化：1 fs
+variable ts_post            equal 0.0001         # 後續演化： → 0.1 fs
   
 # 定義各階段步數（依照時間步長及總模擬時間調整）
 variable steps_equil        equal 10000          # 平衡階段：10,000步 →  10 ps
 variable steps_collision    equal 20000          # 碰撞瞬間：20,000步 →  0.2 ps
 variable steps_intermediate equal 20000          # 中間階段：20,000步 →  2 ps
-variable steps_post         equal 10000          # 後續演化：10,000步 →  10 ps
+variable steps_post         equal 100000         # 後續演化：  → 100,000   10 ps 
 
 variable thermo_step        equal 100            # 設定熱力學輸出步長
 
 # ============================================================
 # 2. 建立晶體結構與初始配置
 # ============================================================
-read_data      conf.lmp
+read_data      ../conf.lmp
 
 mass 1 18.998  # F
 mass 2 9.0122  # Be
@@ -65,7 +64,7 @@ replicate       ${rep} ${rep} ${rep}
 # ============================================================
 # 3. 勢函數定義
 # ============================================================
-pair_style hybrid/overlay deepmd compress.pb zbl 0.84 0.96
+pair_style hybrid/overlay deepmd ../dpa-compress.pb zbl 0.86 1.18
 pair_coeff * * deepmd
 pair_coeff 1 1 zbl 9.0 9.0
 pair_coeff 1 2 zbl 9.0 4.0
@@ -75,44 +74,47 @@ pair_coeff 2 3 zbl 4.0 3.0
 pair_coeff 3 3 zbl 3.0 3.0
 
 # ============================================================
-# 4. 區域與群組定義
+# 4. 區域與群組定義 sqrt((Position.X - 44)^2 + (Position.Y - 44)^2 + (Position.Z - 1.7)^2) < 1
 # ============================================================
 region          rallatoms block INF INF INF INF INF INF
 region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF
 region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF side out
-region          rPKA sphere 43 43 150.0 1.5 # 區域設置為中間就好, z上的話就靠近。表面的話就更近些，比如150.0
+region          rPKA sphere 44 44 1.7 1.0 
 
-group           PKA region rPKA                     
-group           PKAinterior region rinterior
-group           interior subtract PKAinterior PKA 
-group           exterior region rexterior
-group           Ftype type 1
-group           Finterior intersect Ftype interior
-group           Beitype type 2
-group           Beinterior intersect Beitype interior
-group           Liitype type 3
-group           Liinterior intersect Liitype interior
+group           PKA region rPKA                       # PKA 区域
+group           interior region rinterior             # 内部区域（包含 PKA）
+group           exterior region rexterior             # 外部区域
+
+group           Ftype type 1                          # 所有 F 原子
+group           Finterior intersect Ftype interior    # 内部区域的 F 原子
+
+group           Beitype type 2                        # 所有 Be 原子
+group           Beinterior intersect Beitype interior # 内部区域的 Be 原子
+
+group           Liitype type 3                        # 所有 Li 原子
+group           Liinterior intersect Liitype interior # 内部区域的 Li 原子
+
+
 
 # ============================================================
 # 6. 能量最小化 (Minimization)
 # ============================================================
 timestep        ${ts_equil}
-dump            01 interior custom ${thermo_step} dump.start.min id type xu yu zu 
+dump            01 interior custom ${thermo_step} dump.start.premin id type xu yu zu 
 run             0                    # 寫入最小化前的結構
 undump          01                   
 
 min_style       sd
 minimize        1.0e-12 1.0e-12 5000 5000
 
-dump            02 interior custom ${thermo_step} dump.start.postmin id type xu yu zu 
-run             0                    # 寫入最小化後的結構
-undump          02                   
+write_dump      interior custom dump.start.postmin id type xu yu zu
+              
 
 # ============================================================
 # 7. 定義計算量與診斷命令
 # ============================================================
 compute         ex          exterior temp
-compute         PKAin       PKAinterior temp
+compute         PKAin       PKA      temp
 compute         in          interior temp
    
 compute         peInt       interior pe/atom
@@ -139,32 +141,57 @@ variable        simTime     equal elapsed*dt
 # ============================================================
 # 8. 平衡階段（Equilibration）
 # ============================================================
+
+##### 1) 全系統升溫（NVE + Langevin 套用於所有原子） #####
 timestep        ${ts_equil}
 fix             1 all nve
-fix             2 all langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
-thermo          ${thermo_step} 
-thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal 
+fix             2 all langevin ${initTemp} ${initTemp} 0.001 ${seed} zero yes
+
+# 記錄全系統、內部區域與 PKA 結構
+dump            10 all      custom ${thermo_step} dump.equil1_all        id type xu yu zu
+dump            11 interior custom ${thermo_step} dump.equil1_interior   id type xu yu zu
+dump            12 PKA      custom ${thermo_step} dump.equil1_PKA        id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
+
+thermo          ${thermo_step}
+thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal
 run             ${steps_equil}
+
+# 卸載 dump，釋放 ID
+undump          10
+undump          11
+undump          12
 unfix           2
 
+##### 2) 邊界熱浴（NVE + Langevin 僅套用於外部區域） #####
 timestep        ${ts_equil}
-fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 1234567 zero yes
-thermo          ${thermo_step} 
+fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 ${seed} zero yes
+
+# 記錄全系統、內部區域與 PKA 結構（用全新 ID 避免衝突）
+dump            13 all      custom ${thermo_step} dump.equil2_all        id type xu yu zu
+dump            14 interior custom ${thermo_step} dump.equil2_interior   id type xu yu zu
+dump            15 PKA      custom ${thermo_step} dump.equal2_PKA      id type xu yu zu
+
+thermo          ${thermo_step}
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
 run             ${steps_equil}
+
+# 卸載 dump，釋放 ID
+undump          13
+undump          14
+undump          15
 unfix           3
-dump            0 PKA custom ${steps_equil} dump.equal id type xu yu zu 
+
 
 # ============================================================
 # 9. PKA 插入 我會手動選擇 PKA 類型（此處選 F，質量 18.998）
 # ============================================================
 variable pka_mass   equal 18.998  
 
-# 設定 PKA 能量
-variable pka_energy equal 10000  # eV
+# 設定 PKA 能量 eV
+variable pka_energy equal 1000  
 
 # 利用能量公式計算 PKA 速度
-# 注意：103.6427 為metal單位換算常數,原來是 Å/fs（寫錯了） 就變成 Å/ps，（metal）  
+# 注意：103.6427 為metal單位換算常數,   Å/ps
 variable pka_v equal sqrt(2*${pka_energy}/(${pka_mass}*103.6427))*1000
 
 # 設定 PKA 方向（此處選定 z 方向為 -1，即向下）
