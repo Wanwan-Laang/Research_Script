@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ------------------------------------------------------------
-#  C Adsorption Environment Analysis Script  (v2.2, 2025-04-24)
+#  C Adsorption Environment Analysis Script  (v2.3, 2025-04-24)
 #
 #  ➊ 讀取 bridge/hollow/ontop/*/CONTCAR
 #  ➋ 將最後一個原子視為吸附 C
