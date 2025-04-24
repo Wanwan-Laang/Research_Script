@@ -56,8 +56,8 @@ for site in df['Site'].unique():
  # 圓形標記，可以改成 's', '^', 'D', '*', 'x' 等等
 
 # 加入 ZrC 能量基準線
-#zrc_energy = 0.67183667
-zrc_energy = 0.65733667
+#zrc_energy = 0.67183667, this is on hollow, but not the lowest one. 
+zrc_energy = 0.65733667 # here is on Zr, i find it is the lowest.
 plt.axhline(y=zrc_energy, color='red', linestyle='--', linewidth=2, label=f'ZrC: {zrc_energy:.3f}')
 
 # 標籤與圖例
