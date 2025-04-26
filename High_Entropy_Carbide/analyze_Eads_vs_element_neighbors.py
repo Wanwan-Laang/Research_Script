@@ -16,7 +16,7 @@ import numpy as np
 
 # === User Settings ===
 target_element = "Ta"  # <<< Set the element to analyze, e.g., Nb, Ti, Ta, Hf, Zr
-file_path = "C_env_cdist_withEadsortion.csv"  # <<< Path to input CSV file
+file_path = "sample-for_Eads_vs_element_neighbors.csv"  # <<< Path to input CSV file
 
 # === Load and prepare data ===
 df = pd.read_csv(file_path)
