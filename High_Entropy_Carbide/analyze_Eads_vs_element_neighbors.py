@@ -13,6 +13,7 @@ Date: [Today's Date]
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator 
 
 # === User Settings ===
 target_element = "Ta"  # <<< Set the element to analyze, e.g., Nb, Ti, Ta, Hf, Zr
@@ -63,7 +64,8 @@ plt.xlabel("Adsorption Energy $E_{ads}$ (eV)")
 plt.ylabel(f"Number of {target_element} atoms")
 plt.title(f"Number of {target_element} neighbors vs $E_{{ads}}$")
 plt.legend(title="Site Type")
-plt.grid(True)
+plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
+plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7) 
 plt.tight_layout()
 plt.show()
 plt.close()
