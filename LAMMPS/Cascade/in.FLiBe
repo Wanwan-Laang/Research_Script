@@ -1,6 +1,6 @@
 # ------------------------------------------------------------
 # FLiBe PKA Collision Cascade Simulation Script (最終修正)
-# Date: 2025-02-27
+# Date: 2025-05-01
 # 說明：
 # 此腳本經由參數化管理、模組化區分不同階段，
 # 以及針對高能碰撞階段使用短時間步長等改善，
@@ -9,7 +9,7 @@
 # fix error: Thermo compute does not compute vector 
 # fix error: Compute reduce compute msdF does not calculate per-atom values
 # fix error：dump c_displacePKA rather than  Thermo compute
-
+# remind: do not forget to change the energy and region 
 
 # ============================================================
 # 1. 基本初始化與參數定義
