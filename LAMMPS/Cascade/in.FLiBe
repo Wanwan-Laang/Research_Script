@@ -94,21 +94,22 @@ group           Beinterior intersect Beitype interior # 内部区域的 Be 原�
 group           Liitype type 3                        # 所有 Li 原子
 group           Liinterior intersect Liitype interior # 内部区域的 Li 原子
 
-
-
 # ============================================================
 # 6. 能量最小化 (Minimization)
 # ============================================================
 timestep        ${ts_equil}
-dump            01 interior custom ${thermo_step} dump.start.premin id type xu yu zu 
-run             0                    # 寫入最小化前的結構
-undump          01                   
+
+dump            00 all      custom ${thermo_step} dump.start.premin_all      id type xu yu zu
+dump            01 interior custom ${thermo_step} dump.start.premin_interior id type xu yu zu
+run             0
+undump          00
+undump          01
 
 min_style       sd
 minimize        1.0e-12 1.0e-12 5000 5000
 
-write_dump      interior custom dump.start.postmin id type xu yu zu
-              
+write_dump      all      custom dump.start.postmin_all      id type xu yu zu
+write_dump      interior custom dump.start.postmin_interior id type xu yu zu
 
 # ============================================================
 # 7. 定義計算量與診斷命令
@@ -169,7 +170,7 @@ fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 ${seed} zero y
 # 記錄全系統、內部區域與 PKA 結構（用全新 ID 避免衝突）
 dump            13 all      custom ${thermo_step} dump.equil2_all        id type xu yu zu
 dump            14 interior custom ${thermo_step} dump.equil2_interior   id type xu yu zu
-dump            15 PKA      custom ${thermo_step} dump.equal2_PKA      id type xu yu zu
+dump            15 PKA      custom ${thermo_step} dump.equal2_PKA        id type xu yu zu
 
 thermo          ${thermo_step}
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal press
