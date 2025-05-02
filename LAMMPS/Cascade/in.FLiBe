@@ -36,13 +36,13 @@ variable interior_max equal 76.1
 variable ts_equil           equal 0.001          # 平衡階段：1 fs
 variable ts_collision       equal 0.00001        # 碰撞初期：0.01 fs
 variable ts_intermediate    equal 0.0001         # 中間階段：0.1 fs
-variable ts_post            equal 0.001          # 後續演化：1 fs
+variable ts_post            equal 0.0001         # 後續演化： → 0.1 fs
   
 # 定義各階段步數（依照時間步長及總模擬時間調整）
 variable steps_equil        equal 10000          # 平衡階段：10,000步 →  10 ps
 variable steps_collision    equal 20000          # 碰撞瞬間：20,000步 →  0.2 ps
 variable steps_intermediate equal 20000          # 中間階段：20,000步 →  2 ps
-variable steps_post         equal 10000          # 後續演化：10,000步 →  10 ps
+variable steps_post         equal 100000         # 後續演化：  → 100,000   10 ps 
 
 variable thermo_step        equal 100            # 設定熱力學輸出步長
 
@@ -74,29 +74,32 @@ pair_coeff 2 3 zbl 4.0 3.0
 pair_coeff 3 3 zbl 3.0 3.0
 
 # ============================================================
-# 4. 區域與群組定義
+# 4. 區域與群組定義 sqrt((Position.X - 44)^2 + (Position.Y - 44)^2 + (Position.Z - 1.7)^2) < 1
 # ============================================================
 region          rallatoms block INF INF INF INF INF INF
 region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF
 region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF side out
-region          rPKA sphere 43 43 150.0 1.5 # 區域設置為中間就好, z上的話就靠近。表面的話就更近些，比如150.0
+region          rPKA sphere 44 44 1.7 1.0 
 
-group           PKA region rPKA                     
-group           PKAinterior region rinterior
-group           interior subtract PKAinterior PKA 
-group           exterior region rexterior
-group           Ftype type 1
-group           Finterior intersect Ftype interior
-group           Beitype type 2
-group           Beinterior intersect Beitype interior
-group           Liitype type 3
-group           Liinterior intersect Liitype interior
+group           PKA region rPKA                       # PKA 区域
+group           interior region rinterior             # 内部区域（包含 PKA）
+group           exterior region rexterior             # 外部区域
+
+group           Ftype type 1                          # 所有 F 原子
+group           Finterior intersect Ftype interior    # 内部区域的 F 原子
+
+group           Beitype type 2                        # 所有 Be 原子
+group           Beinterior intersect Beitype interior # 内部区域的 Be 原子
+
+group           Liitype type 3                        # 所有 Li 原子
+group           Liinterior intersect Liitype interior # 内部区域的 Li 原子
+
 
 # ============================================================
-# 6. 定義計算量與診斷命令
+# 7. 定義計算量與診斷命令
 # ============================================================
 compute         ex          exterior temp
-compute         PKAin       PKAinterior temp
+compute         PKAin       PKA      temp
 compute         in          interior temp
    
 compute         peInt       interior pe/atom
@@ -219,11 +222,14 @@ thermo          10
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal v_msdF_total v_msdBe_total v_msdLi_total
 thermo_modify   lost warn   #提醒丟失原子情況，不中斷模擬.
 
-dump            2 interior custom ${thermo_step} dump.init id type xu yu zu c_peInt c_keInt
-dump            3 PKA custom ${thermo_step}  dump.PKA.init id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            1001 all      custom ${thermo_step} dump.init_all        id type xu yu zu  
+dump            1002 interior custom ${thermo_step} dump.init_interior   id type xu yu zu c_peInt c_keInt
+dump            1003 PKA      custom ${thermo_step} dump.init_PKA        id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
 run             ${steps_collision}
-undump          2
-undump          3
+undump          1001
+undump          1002
+undump          1003
+
 
 # ============================================================
 # 11. 中間階段
@@ -231,12 +237,14 @@ undump          3
 timestep        ${ts_intermediate}
 thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal v_msdF_total v_msdBe_total v_msdLi_total
-dump            4 interior custom ${thermo_step} dump.peak id type xu yu zu c_peInt c_keInt
-dump            5 PKA custom ${thermo_step}  dump.PKA.peak id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            1101 all      custom ${thermo_step} dump.peak_all        id type xu yu zu
+dump            1102 interior custom ${thermo_step} dump.peak_interior   id type xu yu zu c_peInt c_keInt
+dump            1103 PKA      custom ${thermo_step} dump.peak_PKA        id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
 
 run             ${steps_intermediate}
-undump          4
-undump          5
+undump          1101
+undump          1102
+undump          1103
 
 # ============================================================
 # 12. 後續演化
@@ -244,9 +252,12 @@ undump          5
 timestep        ${ts_post}
 thermo          ${thermo_step} 
 thermo_style    custom v_simTime elapsed dt step temp c_ex c_in c_PKAin pe etotal v_msdF_total v_msdBe_total v_msdLi_total
-dump            6 interior custom ${thermo_step} dump.final id type xu yu zu c_peInt c_keInt
-dump            7 PKA custom ${thermo_step}  dump.PKA.final id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+dump            1201 all      custom ${thermo_step} dump.final_all        id type xu yu zu
+dump            1202 interior custom ${thermo_step} dump.final_interior   id type xu yu zu c_peInt c_keInt
+dump            1203 PKA      custom ${thermo_step} dump.final_PKA        id type xu yu zu c_kePKA c_pePKA c_displacePKA[4]
+
 run             ${steps_post}
-undump          6
-undump          7
+undump          1201
+undump          1202
+undump          1203
 # ============================================================
