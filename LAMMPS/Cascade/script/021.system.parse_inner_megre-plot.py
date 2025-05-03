@@ -56,7 +56,7 @@ def read_energy_dump(filename, average=False):
 time_steps, ke, pe = read_energy_dump("dump.init", average=True)
 
 # 開一張圖
-fig, ax1 = plt.subplots(figsize=(8,6))
+fig, ax1 = plt.subplots(figsize=(8, 5))
 
 # 左側 y 軸：動能
 ax1.plot(time_steps, ke, 'r-', linewidth=2, label='Kinetic Energy')
@@ -65,8 +65,8 @@ ax1.set_ylabel('Per Atom Kinetic Energy (eV)', color='r')
 ax1.tick_params(axis='y', labelcolor='r')
 
 ## 畫一些階段分界線（可選）
-##for x in [42600, 62600]:
-##    ax1.axvline(x=x, color='grey', linestyle='dashdot', linewidth=1)
+for x in [42600]:
+    ax1.axvline(x=x, color='grey', linestyle='dashdot', linewidth=1)
 
 # 右側 y 軸：勢能
 ax2 = ax1.twinx()
@@ -79,7 +79,7 @@ lines1, labels1 = ax1.get_legend_handles_labels()
 lines2, labels2 = ax2.get_legend_handles_labels()
 ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
 
-plt.title('Per Atom Energy Evolution')
+#plt.title('Per Atom Energy Evolution')
 plt.xlim(min(time_steps), max(time_steps))
 plt.tight_layout()
 plt.savefig("figure-Energy-Kinetic_vs_Potential.pdf", dpi=1200,transparent=True)
