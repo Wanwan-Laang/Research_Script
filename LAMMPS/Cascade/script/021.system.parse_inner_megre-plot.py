@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
+plt.rcParams.update({
+    'font.weight': 'bold',
+    'axes.labelweight': 'bold',
+    'axes.linewidth': 2,
+    'axes.titlesize': 12,
+    'axes.labelsize': 12,
+    'legend.fontsize': 13,
+    'xtick.labelsize': 13,
+    'ytick.labelsize': 13
+})
+tick_params = {'direction': 'in', 'width': 2, 'length': 6}
 
 def read_energy_dump(filename, average=False):
     with open(filename, 'r') as f:
