@@ -74,12 +74,12 @@ pair_coeff 2 3 zbl 4.0 3.0
 pair_coeff 3 3 zbl 3.0 3.0
 
 # ============================================================
-# 4. 區域與群組定義 sqrt((Position.X - 44)^2 + (Position.Y - 44)^2 + (Position.Z - 1.7)^2) < 1
+# 4. 區域與群組定義 sqrt((Position.X - 44)^2 + (Position.Y - 42)^2 + (Position.Z - 2.7)^2) < 1
 # ============================================================
 region          rallatoms block INF INF INF INF INF INF
 region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF
 region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} ${interior_min} INF side out
-region          rPKA sphere 44 44 1.7 1.0 
+region          rPKA sphere 44 42 2.7 1.0 
 
 group           all        region rallatoms           #  全系原子
 group           interior   region rinterior           # 「內部」區域（含 PKA）
