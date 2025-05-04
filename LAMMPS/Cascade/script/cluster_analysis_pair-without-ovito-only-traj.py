@@ -19,14 +19,16 @@ Usage:
     --cutoffs Li-Li:3.0[,F-Be:2.8,...]
 
 Arguments:
-  --dump       Path to LAMMPS dump file (must contain atom positions)
+  --dump       Path to LAMMPS dump file (must contain “ITEM: ATOMS …” header)
   --types      Comma‐separated mapping of type IDs to element symbols (e.g. 1:F,2:Be,3:Li)
   --cutoffs    Comma‐separated list of atom‐pair:cutoff_in_Å (e.g. Li-Li:3.0,F-Be:2.8)
 
 Notes:
-  - Only pairs listed under --cutoffs are used for clustering.
-  - All other atom pairs are excluded.
-  - Clusters are connected components where each edge distance ≤ its cutoff.
+  - Only pairs listed under --cutoffs are used for clustering; all others are ignored.
+  - Clusters are connected components where each interatomic distance ≤ its cutoff.
+  - LAMMPS dump columns may appear in different orders between runs. 
+    This script reads fields by their column labels (“id”, “type”, “xu”, “yu”, “zu”, “c_kePKA”, etc.)
+    rather than fixed column positions, so it works regardless of the dump’s output order.
 
 Outputs:
   - cluster_count_vs_time.png    # Number of clusters (size ≥ 2) vs. timestep
