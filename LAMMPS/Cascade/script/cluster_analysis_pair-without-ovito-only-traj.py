@@ -3,8 +3,8 @@
 cluster_analysis_pair.py: Analyze atom‐pair clustering over time
 
 This script identifies clusters of specified atom pairs using user‐defined distance cutoffs,
-lets you choose x‐axis as timestep or frame index, and also select an arbitrary subset
-of timesteps/frames by range or list.
+lets you choose x‐axis as timestep or frame index, select subsets of frames/timesteps,
+and displays the per‐cell counts on the heatmap.
 
 Example (Li–Li only, skip every 10 frames, plot vs. frame index, only frames 0–100 or specific ones):
   python cluster_analysis_pair.py \
@@ -22,11 +22,11 @@ Arguments:
   --skip     Only process every Nth frame (default=1 all frames)
   --xaxis    “timestep” or “frame” (default “timestep”)
   --select   Comma‐separated ranges or values of x‐axis to include,
-             e.g. 2000-20000 or 200,2000,20000 or combination
+             e.g. 2000-20000 or 200,2000,20000
 
 Outputs:
   - cluster_count_vs_time.pdf
-  - cluster_size_heatmap.pdf (zeros shown as blank)
+  - cluster_size_heatmap.pdf (zeros are blank, non-zeros annotated)
 
 Dependencies:
   numpy, scipy, matplotlib
@@ -41,7 +41,7 @@ from matplotlib.ticker import MaxNLocator
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Analyze atom‐pair clusters; choose x-axis and select subset."
+        description="Analyze atom‐pair clusters; choose x-axis, select subset, annotate heatmap."
     )
     p.add_argument("--dump",    required=True,
                    help="LAMMPS dump file with “ITEM: ATOMS …”")
@@ -85,12 +85,13 @@ def parse_select(txt):
     return ranges
 
 def in_selection(x, ranges):
-    for a,b in ranges:
-        if a <= x <= b:
-            return True
-    return False
+    return any(a <= x <= b for a,b in ranges)
 
 def parse_lammps_dump(fname):
+    """
+    Yield list of (step, types_array, coords_array) for each frame in the dump.
+    Detects column order by header labels.
+    """
     frames = []
     with open(fname) as f:
         while True:
@@ -98,7 +99,7 @@ def parse_lammps_dump(fname):
             if not line: break
             if line.startswith("ITEM: TIMESTEP"):
                 step = int(f.readline().strip())
-                # 跳到 ATOMS header
+                # skip to ATOMS header
                 while True:
                     line = f.readline()
                     if not line: return frames
@@ -172,9 +173,11 @@ def main():
     cutoffs = parse_cutoffs(args.cutoffs)
     select_ranges = parse_select(args.select) if args.select else None
 
-    frames  = parse_lammps_dump(args.dump)
-    times, frames_idx, counts = [], [], []
-    size_hist = defaultdict(lambda: defaultdict(int))
+    frames      = parse_lammps_dump(args.dump)
+    x_times     = []
+    x_frames    = []
+    cluster_cnt = []
+    size_hist   = defaultdict(lambda: defaultdict(int))
 
     for idx,(step,types,coords) in enumerate(frames):
         if idx % args.skip != 0: continue
@@ -182,28 +185,27 @@ def main():
         if select_ranges and not in_selection(xval, select_ranges):
             continue
 
-        times.append(step)
-        frames_idx.append(idx)
-
         adj      = build_adjacency(types, coords, cutoffs, sym2id)
         clusters = [c for c in find_clusters(adj) if len(c)>=2]
-        counts.append(len(clusters))
+        cluster_cnt.append(len(clusters))
+        x_times.append(step)
+        x_frames.append(idx)
         for c in clusters:
             size_hist[len(c)][xval] += 1
 
-    # 準備 x 軸
-    xvals = frames_idx if args.xaxis=="frame" else times
+    # choose x-axis
+    xvals = x_frames if args.xaxis=="frame" else x_times
     xlabel = "Frame index" if args.xaxis=="frame" else "Timestep"
 
     # --- plot cluster count ---
     plt.figure(figsize=(6,4))
-    plt.scatter(xvals, counts, s=40, c="tab:blue")
+    plt.scatter(xvals, cluster_cnt, s=40, c="tab:blue")
     plt.xlabel(xlabel); plt.ylabel("Cluster Count (≥2)")
     plt.tight_layout()
     plt.savefig("cluster_count_vs_time.pdf", dpi=900)
     plt.close()
 
-    # --- heatmap data ---
+    # --- prepare heatmap data ---
     steps = xvals
     sizes = sorted(size_hist)
     Z = np.zeros((len(sizes), len(steps)), int)
@@ -211,12 +213,20 @@ def main():
         for j,st in enumerate(steps):
             Z[i,j] = size_hist[s].get(st, 0)
 
-    # --- plot heatmap ---
+    # --- plot annotated heatmap ---
     fig, ax = plt.subplots(figsize=(8,6))
     X, Y = np.arange(len(steps)+1), np.arange(len(sizes)+1)
     Zm = np.ma.masked_where(Z==0, Z)
     cmap = plt.cm.viridis; cmap.set_bad(color='white')
     pcm = ax.pcolormesh(X, Y, Zm, cmap=cmap, shading="flat")
+
+    # annotate each non-zero cell
+    for i in range(len(sizes)):
+        for j in range(len(steps)):
+            val = Z[i,j]
+            if val:
+                ax.text(j+0.5, i+0.5, str(val),
+                        ha='center', va='center', fontsize=8, color='white')
 
     ax.set_xticks(np.arange(len(steps))+0.5)
     ax.set_xticklabels(steps, rotation=90)
