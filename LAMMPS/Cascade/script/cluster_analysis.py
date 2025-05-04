@@ -138,7 +138,7 @@ def plot_cluster_heatmap(df, prefix):
 
     plt.tight_layout()
     out_pdf = f"cluster_heatmap_{prefix}.pdf"
-    plt.savefig(out_pdf, dpi=1200, bbox_inches='tight')
+    plt.savefig(out_pdf, dpi=1200,bbox_inches='tight', transparent=True)
     print(f"Saved heatmap with pcolormesh: {out_pdf}")
     plt.close(fig)
 
