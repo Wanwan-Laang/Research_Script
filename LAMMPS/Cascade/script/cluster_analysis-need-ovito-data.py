@@ -108,7 +108,7 @@ def plot_time_series(stats, prefix):
     plt.close(fig)
 
 def plot_cluster_heatmap(df, prefix):
-    """用 pcolormesh 畫 heatmap，方便調整格仔大小"""
+    """用 pcolormesh 畫 heatmap，方便調整格仔大小，同時顯示每格嘅數值"""
     pivot = pd.crosstab(df['cluster_size'], df['frame'])
     data = pivot.values
     masked = np.ma.masked_where(data == 0, data)
@@ -133,13 +133,27 @@ def plot_cluster_heatmap(df, prefix):
     ax.set_yticks(np.arange(ny) + 0.5)
     ax.set_yticklabels(pivot.index)
 
-    cbar = fig.colorbar(pcm, ax=ax)
     # ★ 強制 colorbar 只顯示整數
     from matplotlib.ticker import MaxNLocator
+    cbar = fig.colorbar(pcm, ax=ax)
     cbar.locator = MaxNLocator(integer=True)
     cbar.update_ticks()
-
     cbar.set_label('Count', fontweight='bold')
+
+    # ─── 在每個 cell 中心加上數值 ───
+    for i in range(ny):
+        for j in range(nx):
+            val = data[i, j]
+            if val > 0:
+                ax.text(
+                    j + 0.5,      # x 位置
+                    i + 0.5,      # y 位置
+                    str(val),     # 要顯示嘅數字
+                    ha='center',  # 水平置中
+                    va='center',  # 垂直置中
+                    fontsize=8,
+                    color='white' if val > data.max()/2 else 'black'
+                )
 
     plt.tight_layout()
     out_pdf = f"cluster_heatmap_{prefix}.pdf"
