@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # parse_PKA_energy_dissipation.py
 # Parse kinetic & potential energy of PKA over time from LAMMPS dump
-# add PKA potential energy and kinetic energy, optional reset time
+# 追蹤 PKA 的動能/勢能變化，可選擇是否將時間重置為 0
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -1,4 +1,4 @@
-# parse_energy_from_dump_direct_timestep.py
+#!/usr/bin/env python3
 import matplotlib.pyplot as plt
 import numpy as np
 plt.rcParams.update({
@@ -33,9 +33,9 @@ def read_energy_dump(filename, average=False):
             ke_total = 0.0
             pe_total = 0.0
             atom_count = 0
-
             while i < len(lines) and not lines[i].startswith("ITEM:"):
                 parts = lines[i].split()
+                # 注意：parts[6] 是動能，parts[5] 是勢能
                 ke_total += float(parts[6])
                 pe_total += float(parts[5])
                 atom_count += 1
@@ -52,30 +52,35 @@ def read_energy_dump(filename, average=False):
 
     return np.array(timesteps), np.array(ke_list), np.array(pe_list)
 
-# === main ===
-time_steps, ke, pe = read_energy_dump("dump.init", average=False)
+# 讀檔
+time_steps, ke, pe = read_energy_dump("dump.sum.init-peak", average=True)
 
-plt.figure()
-plt.plot(time_steps, ke, label="Kinetic Energy", color='r', linewidth=2)
-plt.axvline(x=42600, color='grey', linestyle='dashdot', linewidth=1)
-plt.axvline(x=62600, color='grey', linestyle='dashdot', linewidth=1)
-plt.xlabel("Timestep")
-plt.ylabel("Energy (eV)")
-plt.xlim(time_steps[0], time_steps[-1])
-#plt.title("Internal Kinetic Energy vs Timestep")
-plt.legend()
+# 開一張圖
+fig, ax1 = plt.subplots(figsize=(8, 5))
+
+# 左側 y 軸：動能
+ax1.plot(time_steps, ke, 'r-', linewidth=2, label='Kinetic Energy')
+ax1.set_xlabel('Timestep')
+ax1.set_ylabel('Per Atom Kinetic Energy (eV)', color='r')
+ax1.tick_params(axis='y', labelcolor='r')
+
+## 畫一些階段分界線（可選）
+for x in [42600]:
+    ax1.axvline(x=x, color='grey', linestyle='dashdot', linewidth=1)
+
+# 右側 y 軸：勢能
+ax2 = ax1.twinx()
+ax2.plot(time_steps, pe, 'b-', linewidth=2, label='Potential Energy')
+ax2.set_ylabel('Per Atom Potential Energy (eV)', color='b')
+ax2.tick_params(axis='y', labelcolor='b')
+
+# 合併圖例
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
+
+#plt.title('Per Atom Energy Evolution')
+plt.xlim(min(time_steps), max(time_steps))
 plt.tight_layout()
-plt.savefig("figure-Inner-kinetic_energy.pdf",dpi=1200,transparent=True)
-
-
-plt.figure()
-plt.plot(time_steps, pe, label="Potential Energy", color='b', linewidth=2)
-plt.axvline(x=42600, color='grey', linestyle='dashdot', linewidth=1)
-plt.axvline(x=62600, color='grey', linestyle='dashdot', linewidth=1)
-plt.xlabel("Timestep")
-plt.ylabel("Energy (eV)")
-plt.xlim(time_steps[0], time_steps[-1])
-#plt.title("Internal Potential Energy vs Timestep")
-plt.legend()
-plt.tight_layout()
-plt.savefig("figure-Inner-potential_energy.pdf",dpi=1200,transparent=True)
+plt.savefig("figure-Energy-Kinetic_vs_Potential.pdf", dpi=1200,transparent=True)
+#plt.show()
