@@ -16,12 +16,15 @@ Usage:
   python cluster_analysis_pair.py \
     --dump dump.sum.interior \
     --types 1:F,2:Be,3:Li \
-    --cutoffs Li-Li:3.0[,F-Be:2.8,...]
+    --cutoffs Li-Li:3.0[,F-Be:2.8,...]\
+    [--skip 10]
+
 
 Arguments:
   --dump       Path to LAMMPS dump file (must contain “ITEM: ATOMS …” header)
   --types      Comma‐separated mapping of type IDs to element symbols (e.g. 1:F,2:Be,3:Li)
   --cutoffs    Comma‐separated list of atom‐pair:cutoff_in_Å (e.g. Li-Li:3.0,F-Be:2.8)
+  --skip       Only process every Nth frame (default: 10)
 
 Notes:
   - Only pairs listed under --cutoffs are used for clustering; all others are ignored.
