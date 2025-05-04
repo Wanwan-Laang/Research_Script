@@ -97,7 +97,7 @@ def compute_time_series_stats(df, prefix):
     return stats
 
 def plot_time_series(stats, prefix):
-    """Plot time series of cluster metrics and save as PNG."""
+    """Plot time series of cluster metrics and save as pdf."""
     fig, axs = plt.subplots(4,1, figsize=(8,12), sharex=True)
     axs[0].plot(stats['frame'], stats['cluster_count'], '-o')
     axs[0].set_ylabel('Cluster Count')
@@ -110,9 +110,9 @@ def plot_time_series(stats, prefix):
     axs[3].set_xlabel('Frame')
     plt.xlim(stats['frame'].min(), stats['frame'].max())
     plt.tight_layout()
-    out_png = f"cluster_time_series_{prefix}.png"
-    plt.savefig(out_png, dpi=300)
-    print(f"Saved time series plot: {out_png}")
+    out_pdf = f"cluster_time_series_{prefix}.pdf"
+    plt.savefig(out_pdf, dpi=1200, bbox_inches='tight',transparent=True)
+    print(f"Saved time series plot: {out_pdf}")
     plt.close(fig)
 
 def plot_cluster_heatmap(df, prefix):
