@@ -2,27 +2,27 @@
 """
 cluster_analysis_pair.py: Analyze atom‐pair clustering over time
 
-This script identifies clusters of specified atom pairs using user‐defined distance cutoffs.
-For example, to focus solely on Li–Li interactions at 3.0 Å and skip every 10 frames, run:
+This script identifies clusters of specified atom pairs using user‐defined distance cutoffs,
+and lets you choose whether to plot vs. the actual LAMMPS timesteps or just the frame indices.
 
+Example (Li–Li only, skip every 10 frames, plot vs. frame index):
   python cluster_analysis_pair.py \
     --dump dump.sum.interior \
     --types 1:F,2:Be,3:Li \
     --cutoffs Li-Li:3.0 \
-    --skip 10
+    --skip 10 \
+    --xaxis frame
 
-Then the script will:
-  1. Read each frame from the LAMMPS dump (columns by label, not position).
-  2. Filter only Li–Li pairs.
-  3. Build a graph where edges connect atoms ≤ 3.0 Å.
-  4. Find connected components (“clusters”) of size ≥2.
-  5. Plot cluster count vs. timestep and a heatmap of cluster‐size distribution.
-
-Fields order can vary between dumps; we look up “id”, “type”, “xu”, “yu”, “zu” by name.
+Arguments:
+  --dump     Path to LAMMPS dump file (must contain “ITEM: ATOMS …”)
+  --types    Comma‐separated ID:SYMBOL mappings, e.g. 1:F,2:Be,3:Li
+  --cutoffs  Comma‐separated SYMBOL1-SYMBOL2:CUTOFF, e.g. Li-Li:3.0,F-Be:2.8
+  --skip     Only process every Nth frame (default: 1 → all frames)
+  --xaxis    Which to use on x‐axis: “timestep” (default) or “frame”
 
 Outputs:
   - cluster_count_vs_time.pdf
-  - cluster_size_heatmap.pdf (zeros are now blank/white)
+  - cluster_size_heatmap.pdf (zeros shown as blank)
 
 Dependencies:
   numpy, scipy, matplotlib
@@ -33,19 +33,22 @@ from collections import deque, defaultdict
 import numpy as np
 from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Analyze clusters defined by atom‐pair cutoffs over time."
+        description="Analyze atom‐pair clusters; choose x-axis (timestep/frame)."
     )
     p.add_argument("--dump",    required=True,
-                   help="LAMMPS dump file with “ITEM: ATOMS ...” blocks")
+                   help="LAMMPS dump file with “ITEM: ATOMS …” blocks")
     p.add_argument("--types",   required=True,
                    help="Mapping of type IDs to symbols, e.g. 1:F,2:Be,3:Li")
     p.add_argument("--cutoffs", required=True,
                    help="Atom‐pair cutoffs, e.g. Li-Li:3.0,F-Be:2.8")
     p.add_argument("--skip",    type=int, default=1,
-                   help="Only process every Nth frame (default 1: use all frames)")
+                   help="Only process every Nth frame (default=1 = all frames)")
+    p.add_argument("--xaxis",   choices=["timestep","frame"], default="timestep",
+                   help="Use LAMMPS timestep or frame index on x‐axis")
     return p.parse_args()
 
 def parse_types(txt):
@@ -64,15 +67,18 @@ def parse_cutoffs(txt):
     return out
 
 def parse_lammps_dump(fname):
+    """
+    Yield (step, types_array, coords_array) for each frame in the dump.
+    Auto-detects column labels (“type”, “xu”, “yu”, “zu”).
+    """
     frames = []
     with open(fname) as f:
         while True:
             line = f.readline()
-            if not line:
-                break
+            if not line: break
             if line.startswith("ITEM: TIMESTEP"):
                 step = int(f.readline().strip())
-                # skip to ITEM: ATOMS
+                # skip to ATOMS header
                 while True:
                     line = f.readline()
                     if not line: return frames
@@ -102,14 +108,17 @@ def parse_lammps_dump(fname):
     return frames
 
 def build_adjacency(types, coords, cutoffs, sym2id):
+    """
+    Build adjacency list for atoms connected by any specified cutoff.
+    Returns dict: atom_index -> set(neighbor_indices).
+    """
     N = len(types)
     adj = {i:set() for i in range(N)}
     for symA, symB, cutoff in cutoffs:
         idA, idB = sym2id[symA], sym2id[symB]
         idxA = np.nonzero(types==idA)[0]
         idxB = np.nonzero(types==idB)[0]
-        if len(idxA)==0 or len(idxB)==0:
-            continue
+        if len(idxA)==0 or len(idxB)==0: continue
         ptsA, ptsB = coords[idxA], coords[idxB]
         if idA == idB:
             tree = cKDTree(ptsA)
@@ -126,6 +135,10 @@ def build_adjacency(types, coords, cutoffs, sym2id):
     return adj
 
 def find_clusters(adj):
+    """
+    Given adjacency dict, find connected components (clusters).
+    Returns list of lists of atom indices.
+    """
     visited, clusters = set(), []
     for i in adj:
         if i not in visited:
@@ -150,53 +163,61 @@ def main():
     times, counts = [], []
     size_hist = defaultdict(lambda: defaultdict(int))
 
+    # collect data
     for idx,(step,types,coords) in enumerate(frames):
-        if idx % args.skip != 0:
-            continue
+        if idx % args.skip != 0: continue
+        times.append(step)
         adj      = build_adjacency(types, coords, cutoffs, sym2id)
         clusters = [c for c in find_clusters(adj) if len(c)>=2]
-        times.append(step)
         counts.append(len(clusters))
         for c in clusters:
             size_hist[len(c)][step] += 1
 
-    # --- Plot cluster count vs time ---
+    # build x‐axis values
+    frames_idx = list(range(len(times)))
+    xvals      = frames_idx if args.xaxis=="frame" else times
+    xlabel     = "Frame index" if args.xaxis=="frame" else "Timestep"
+
+    # --- Plot cluster count vs time/frame ---
     plt.figure(figsize=(6,4))
-    plt.scatter(times, counts, s=40, c="tab:blue")
-    plt.xlabel("Timestep"); plt.ylabel("Cluster Count (size ≥2)")
+    plt.scatter(xvals, counts, s=40, c="tab:blue")
+    plt.xlabel(xlabel)
+    plt.ylabel("Cluster Count (size ≥2)")
     plt.tight_layout()
     plt.savefig("cluster_count_vs_time.pdf", dpi=900)
     plt.close()
 
     # --- Prepare heatmap data ---
-    steps = sorted(times)
+    steps = times
     sizes = sorted(size_hist)
     Z = np.zeros((len(sizes), len(steps)), int)
     for i,s in enumerate(sizes):
         for j,st in enumerate(steps):
             Z[i,j] = size_hist[s].get(st, 0)
 
-    # --- Plot cluster size heatmap with zeros blanked out ---
+    # --- Plot cluster size heatmap ---
     fig, ax = plt.subplots(figsize=(8,6))
     X, Y = np.arange(len(steps)+1), np.arange(len(sizes)+1)
-
-    # mask zeros
-    Z_masked = np.ma.masked_where(Z==0, Z)
-
+    Zm = np.ma.masked_where(Z==0, Z)          # mask zeros
     cmap = plt.cm.viridis
-    cmap.set_bad(color='white')  # zero cells become white
+    cmap.set_bad(color='white')               # zeros show white
 
-    pcm = ax.pcolormesh(X, Y, Z_masked, cmap=cmap, shading="flat")
+    pcm = ax.pcolormesh(X, Y, Zm, cmap=cmap, shading="flat")
+
+    # xticks as frame idx or timestep
+    if args.xaxis == "frame":
+        labels = frames_idx
+    else:
+        labels = steps
 
     ax.set_xticks(np.arange(len(steps))+0.5)
-    ax.set_xticklabels(steps, rotation=90)
+    ax.set_xticklabels(labels, rotation=90)
     ax.set_yticks(np.arange(len(sizes))+0.5)
     ax.set_yticklabels(sizes)
-    ax.set_xlabel("Timestep"); ax.set_ylabel("Cluster Size")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Cluster Size")
 
     cbar = fig.colorbar(pcm, ax=ax, label="Count")
-    # make colorbar ticks integers
-    from matplotlib.ticker import MaxNLocator
     cbar.locator = MaxNLocator(integer=True)
     cbar.update_ticks()
 
