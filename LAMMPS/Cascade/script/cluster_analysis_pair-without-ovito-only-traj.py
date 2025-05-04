@@ -22,7 +22,7 @@ Fields order can vary between dumps; we look up “id”, “type”, “xu”, 
 
 Outputs:
   - cluster_count_vs_time.pdf
-  - cluster_size_heatmap.pdf
+  - cluster_size_heatmap.pdf (zeros are now blank/white)
 
 Dependencies:
   numpy, scipy, matplotlib
@@ -64,10 +64,6 @@ def parse_cutoffs(txt):
     return out
 
 def parse_lammps_dump(fname):
-    """
-    Yield (step, types_array, coords_array) for each frame in the dump.
-    Automatically detects column order by name.
-    """
     frames = []
     with open(fname) as f:
         while True:
@@ -76,22 +72,19 @@ def parse_lammps_dump(fname):
                 break
             if line.startswith("ITEM: TIMESTEP"):
                 step = int(f.readline().strip())
-                # skip to "ITEM: ATOMS" line
+                # skip to ITEM: ATOMS
                 while True:
                     line = f.readline()
-                    if not line:
-                        return frames
+                    if not line: return frames
                     if line.startswith("ITEM: ATOMS"):
                         cols = line.strip().split()[2:]
                         idx = {name:i for i,name in enumerate(cols)}
-                        # required labels
                         i_type = idx["type"]
                         i_x    = idx["xu"]
                         i_y    = idx["yu"]
                         i_z    = idx["zu"]
                         break
                 types, coords = [], []
-                # read atom lines until next ITEM or EOF
                 while True:
                     pos = f.tell()
                     line = f.readline()
@@ -109,10 +102,6 @@ def parse_lammps_dump(fname):
     return frames
 
 def build_adjacency(types, coords, cutoffs, sym2id):
-    """
-    Build adjacency list for atoms connected by any specified cutoff.
-    Returns dict: atom_index -> set(neighbor_indices).
-    """
     N = len(types)
     adj = {i:set() for i in range(N)}
     for symA, symB, cutoff in cutoffs:
@@ -122,7 +111,7 @@ def build_adjacency(types, coords, cutoffs, sym2id):
         if len(idxA)==0 or len(idxB)==0:
             continue
         ptsA, ptsB = coords[idxA], coords[idxB]
-        if idA==idB:
+        if idA == idB:
             tree = cKDTree(ptsA)
             for i,j in tree.query_pairs(r=cutoff):
                 u, v = idxA[i], idxA[j]
@@ -137,10 +126,6 @@ def build_adjacency(types, coords, cutoffs, sym2id):
     return adj
 
 def find_clusters(adj):
-    """
-    Given adjacency dict, find connected components (clusters).
-    Returns list of lists of atom indices.
-    """
     visited, clusters = set(), []
     for i in adj:
         if i not in visited:
@@ -191,16 +176,30 @@ def main():
         for j,st in enumerate(steps):
             Z[i,j] = size_hist[s].get(st, 0)
 
-    # --- Plot cluster size heatmap ---
+    # --- Plot cluster size heatmap with zeros blanked out ---
     fig, ax = plt.subplots(figsize=(8,6))
     X, Y = np.arange(len(steps)+1), np.arange(len(sizes)+1)
-    pcm = ax.pcolormesh(X, Y, Z, cmap="viridis", shading="flat")
+
+    # mask zeros
+    Z_masked = np.ma.masked_where(Z==0, Z)
+
+    cmap = plt.cm.viridis
+    cmap.set_bad(color='white')  # zero cells become white
+
+    pcm = ax.pcolormesh(X, Y, Z_masked, cmap=cmap, shading="flat")
+
     ax.set_xticks(np.arange(len(steps))+0.5)
     ax.set_xticklabels(steps, rotation=90)
     ax.set_yticks(np.arange(len(sizes))+0.5)
     ax.set_yticklabels(sizes)
     ax.set_xlabel("Timestep"); ax.set_ylabel("Cluster Size")
-    fig.colorbar(pcm, ax=ax, label="Count")
+
+    cbar = fig.colorbar(pcm, ax=ax, label="Count")
+    # make colorbar ticks integers
+    from matplotlib.ticker import MaxNLocator
+    cbar.locator = MaxNLocator(integer=True)
+    cbar.update_ticks()
+
     plt.tight_layout()
     plt.savefig("cluster_size_heatmap.pdf", dpi=900)
     plt.close()
