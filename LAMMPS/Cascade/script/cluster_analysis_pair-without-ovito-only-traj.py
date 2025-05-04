@@ -1,25 +1,38 @@
 #!/usr/bin/env python3
 """
-cluster_analysis_pair.py: Analyze cluster formation for specified atom‐pair cutoffs over time.
+cluster_analysis_pair.py: Analyze atom‐pair clustering over time
 
-如果你只想分析 Li–Li，
-就只在 --cutoffs 裡指定 Li-Li:3.0，不給其它對（像 F–Be、F–Li、Be–Be …）任何閾值，程式就只會挑出 Li–Li 這一種鍵距離來做 cluster 分析，完全忽略其它原子對。
+This script identifies clusters of specified atom pairs using user‐defined distance cutoffs.
+For example, to focus solely on Li–Li interactions at 3.0 Å, use:
+
+  --cutoffs Li-Li:3.0
+
+In that case, the script will:
+  1. Filter only Li–Li atom pairs from the dump.
+  2. Build a connectivity graph where edges exist if distance ≤ 3.0 Å.
+  3. Detect connected clusters and ignore all other atom pairs.
 
 Usage:
   python cluster_analysis_pair.py \
     --dump dump.sum.interior \
-    --cutoffs Li-Li:3.0,F-Be:2.8 \
-    --types 1:F,2:Be,3:Li
+    --types 1:F,2:Be,3:Li \
+    --cutoffs Li-Li:3.0[,F-Be:2.8,...]
+
+Arguments:
+  --dump       Path to LAMMPS dump file (must contain atom positions)
+  --types      Comma‐separated mapping of type IDs to element symbols (e.g. 1:F,2:Be,3:Li)
+  --cutoffs    Comma‐separated list of atom‐pair:cutoff_in_Å (e.g. Li-Li:3.0,F-Be:2.8)
+
 Notes:
-	--types 只用來對應 type 編號和元素名稱，完整保留原始 Metadata。
-    --cutoffs Li-Li:3.0 唯一指定 Li–Li 的連接距離（例如 3.0 Å）。
-    腳本裡面,如果只有Li-Li:3.0，則 這個腳本會先把所有 atom pair 按 type 篩出 Li–Li，再用 ≤3.0 Å 的距離去建圖、找 cluster、畫圖，其他對完全不處理也不會貢獻任何 cluster。
+  - Only pairs listed under --cutoffs are used for clustering.
+  - All other atom pairs are excluded.
+  - Clusters are connected components where each edge distance ≤ its cutoff.
 
-Produces:
-  - cluster_count_vs_time.png      # Number of clusters (size ≥ 2) vs timestep
-  - cluster_size_heatmap.png      # Heatmap of cluster size distribution over time
+Outputs:
+  - cluster_count_vs_time.png    # Number of clusters (size ≥ 2) vs. timestep
+  - cluster_size_heatmap.png    # Heatmap of cluster size distribution over time
 
-Requirements:
+Dependencies:
   numpy, scipy, matplotlib
 """
 
