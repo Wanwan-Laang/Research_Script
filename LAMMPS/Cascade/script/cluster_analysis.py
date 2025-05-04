@@ -46,7 +46,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-
 def read_cluster_file(path, prefix, skip_by):
     """讀取單個叢集文件，符合前綴且幀數符合條件時才返回 DataFrame"""
     fname = os.path.basename(path)
@@ -68,7 +67,6 @@ def read_cluster_file(path, prefix, skip_by):
     df['frame'] = frame
     return df
 
-
 def load_all_clusters(folder, prefix, skip_by):
     """批量加載所有符合條件的叢集文件"""
     pattern = os.path.join(folder, f"{prefix}.*")
@@ -83,7 +81,6 @@ def load_all_clusters(folder, prefix, skip_by):
             dfs.append(df)
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
-
 def compute_time_series_stats(df, prefix):
     """計算每幀的叢集數量，並保存成 CSV"""
     stats = df.groupby('frame').agg({'cluster_id': 'count'}).reset_index()
@@ -92,7 +89,6 @@ def compute_time_series_stats(df, prefix):
     stats.to_csv(out_csv, index=False)
     print(f"Saved time series stats: {out_csv}")
     return stats
-
 
 def plot_time_series(stats, prefix):
     """繪製叢集數量隨時間變化圖並保存"""
@@ -108,36 +104,46 @@ def plot_time_series(stats, prefix):
     print(f"Saved time series plot: {out_pdf}")
     plt.close(fig)
 
-
 def plot_cluster_heatmap(df, prefix):
-    """繪製叢集大小分佈熱圖"""
+    """繪製叢集大小分佈熱圖，使用 pcolormesh 保持網格大小可控"""
+    # 建立 pivot table：行=cluster_size，列=frame，值=出現次數
     pivot = pd.crosstab(df['cluster_size'], df['frame'])
     data = pivot.values
     masked = np.ma.masked_where(data == 0, data)
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    # 為了 pcolormesh，需要構造 cell 的坐標邊界
+    nx = pivot.shape[1]
+    ny = pivot.shape[0]
+    X = np.arange(nx+1)
+    Y = np.arange(ny+1)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
     cmap = plt.cm.viridis
     cmap.set_bad(color='white')
-    im = ax.imshow(masked, aspect='auto', origin='lower', interpolation='none', cmap=cmap)
+
+    pcm = ax.pcolormesh(
+        X, Y, masked,
+        cmap=cmap,
+        shading='flat'
+    )
 
     ax.set_xlabel('Frame', fontweight='bold')
     ax.set_ylabel('Cluster Size', fontweight='bold')
     ax.set_title('Cluster Size Distribution Heatmap', fontweight='bold')
 
-    ax.set_xticks(np.arange(pivot.shape[1]))
+    ax.set_xticks(np.arange(nx) + 0.5)
     ax.set_xticklabels(pivot.columns, rotation=90)
-    ax.set_yticks(np.arange(pivot.shape[0]))
+    ax.set_yticks(np.arange(ny) + 0.5)
     ax.set_yticklabels(pivot.index)
 
-    cbar = fig.colorbar(im, ax=ax)
+    cbar = fig.colorbar(pcm, ax=ax)
     cbar.set_label('Count', fontweight='bold')
 
     plt.tight_layout()
     out_pdf = f"cluster_heatmap_{prefix}.pdf"
-    plt.savefig(out_pdf, dpi=1200)
-    print(f"Saved heatmap: {out_pdf}")
+    plt.savefig(out_pdf, dpi=1200, bbox_inches='tight')
+    print(f"Saved heatmap with pcolormesh: {out_pdf}")
     plt.close(fig)
-
 
 if __name__ == "__main__":
     args = parse_args()
