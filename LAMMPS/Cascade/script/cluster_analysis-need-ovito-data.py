@@ -152,7 +152,7 @@ def plot_cluster_heatmap(df, prefix):
                     ha='center',  # 水平置中
                     va='center',  # 垂直置中
                     fontsize=8,
-                    color='white' if val > data.max()/2 else 'black'
+                    color='white' #if val > data.max()/2 else 'black' # 可以把註釋取消
                 )
 
     plt.tight_layout()
