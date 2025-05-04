@@ -16,6 +16,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 # 設定全局繪圖參數
 plt.rcParams.update({
@@ -91,27 +92,27 @@ def compute_time_series_stats(df, prefix):
     return stats
 
 def plot_time_series(stats, prefix):
-    """繪製叢集數量隨時間變化圖並保存"""
-    fig, ax = plt.subplots(figsize=(8,4))
-    ax.plot(stats['frame'], stats['cluster_count'], '-o', linewidth=2)
+    """繪製叢集數量隨時間變化散點圖並保存"""
+    fig, ax = plt.subplots()
+    ax.scatter(stats['frame'], stats['cluster_count'], color='blue', s=100, alpha=0.8)
     ax.set_xlabel('Frame', fontweight='bold')
     ax.set_ylabel('Cluster Count', fontweight='bold')
     ax.tick_params(**tick_params)
-    plt.xlim(stats['frame'].min(), stats['frame'].max())
+    # ★ 強制 y 軸只顯示整數
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.xlim(stats['frame'].min(), stats['frame'].max()+1)
     plt.tight_layout()
     out_pdf = f"cluster_time_series_{prefix}.pdf"
     plt.savefig(out_pdf, dpi=1200, bbox_inches='tight', transparent=True)
-    print(f"Saved time series plot: {out_pdf}")
+    print(f"Saved time series scatter plot: {out_pdf}")
     plt.close(fig)
 
 def plot_cluster_heatmap(df, prefix):
     """繪製叢集大小分佈熱圖，使用 pcolormesh 保持網格大小可控"""
-    # 建立 pivot table：行=cluster_size，列=frame，值=出現次數
     pivot = pd.crosstab(df['cluster_size'], df['frame'])
     data = pivot.values
     masked = np.ma.masked_where(data == 0, data)
 
-    # 為了 pcolormesh，需要構造 cell 的坐標邊界
     nx = pivot.shape[1]
     ny = pivot.shape[0]
     X = np.arange(nx+1)
@@ -121,11 +122,7 @@ def plot_cluster_heatmap(df, prefix):
     cmap = plt.cm.viridis
     cmap.set_bad(color='white')
 
-    pcm = ax.pcolormesh(
-        X, Y, masked,
-        cmap=cmap,
-        shading='flat'
-    )
+    pcm = ax.pcolormesh(X, Y, masked, cmap=cmap, shading='flat')
 
     ax.set_xlabel('Frame', fontweight='bold')
     ax.set_ylabel('Cluster Size', fontweight='bold')
