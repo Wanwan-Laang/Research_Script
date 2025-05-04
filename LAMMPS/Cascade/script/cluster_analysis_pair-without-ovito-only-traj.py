@@ -31,8 +31,8 @@ Notes:
     rather than fixed column positions, so it works regardless of the dump’s output order.
 
 Outputs:
-  - cluster_count_vs_time.png    # Number of clusters (size ≥ 2) vs. timestep
-  - cluster_size_heatmap.png    # Heatmap of cluster size distribution over time
+  - cluster_count_vs_time.pdf    # Number of clusters (size ≥ 2) vs. timestep
+  - cluster_size_heatmap.pdf    # Heatmap of cluster size distribution over time
 
 Dependencies:
   numpy, scipy, matplotlib
@@ -210,7 +210,7 @@ def main():
     plt.xlabel("Timestep")
     plt.ylabel("Cluster Count (size ≥2)")
     plt.tight_layout()
-    plt.savefig("cluster_count_vs_time.png", dpi=300)
+    plt.savefig("cluster_count_vs_time.pdf", dpi=900)
     plt.close()
 
     # --- Prepare heatmap data ---
@@ -235,7 +235,7 @@ def main():
     ax.set_ylabel("Cluster Size")
     fig.colorbar(pcm, ax=ax, label="Count")
     plt.tight_layout()
-    plt.savefig("cluster_size_heatmap.png", dpi=300)
+    plt.savefig("cluster_size_heatmap.pdf", dpi=900)
     plt.close()
 
 if __name__ == "__main__":
