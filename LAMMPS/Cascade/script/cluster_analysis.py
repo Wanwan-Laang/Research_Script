@@ -18,7 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-# 設定全局繪圖參數
+# 設置全局畫圖參數
 plt.rcParams.update({
     'font.weight': 'bold',
     'axes.labelweight': 'bold',
@@ -31,7 +31,7 @@ plt.rcParams.update({
 })
 tick_params = {'direction': 'in', 'width': 2, 'length': 6}
 
-SKIP_BY_DEFAULT = 10  # 默認跳過幀
+SKIP_BY_DEFAULT = 10  # 預設跳 frame 間隔
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -48,7 +48,7 @@ def parse_args():
     return parser.parse_args()
 
 def read_cluster_file(path, prefix, skip_by):
-    """讀取單個叢集文件，符合前綴且幀數符合條件時才返回 DataFrame"""
+    """讀入單個 cluster 檔案，夾到 prefix 同埋 frame 屬於 skip_by 條件先返 DataFrame"""
     fname = os.path.basename(path)
     m = re.search(rf"{re.escape(prefix)}[._]?(\d+)", fname)
     if not m:
@@ -69,7 +69,7 @@ def read_cluster_file(path, prefix, skip_by):
     return df
 
 def load_all_clusters(folder, prefix, skip_by):
-    """批量加載所有符合條件的叢集文件"""
+    """一齊 load晒所有符合條件嘅 cluster 檔案"""
     pattern = os.path.join(folder, f"{prefix}.*")
     files = sorted(
         glob.glob(pattern),
@@ -83,7 +83,7 @@ def load_all_clusters(folder, prefix, skip_by):
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 def compute_time_series_stats(df, prefix):
-    """計算每幀的叢集數量，並保存成 CSV"""
+    """計算每個 frame 入面有幾多 cluster，並存成 CSV"""
     stats = df.groupby('frame').agg({'cluster_id': 'count'}).reset_index()
     stats.columns = ['frame','cluster_count']
     out_csv = f"cluster_stats_summary_{prefix}.csv"
@@ -92,13 +92,13 @@ def compute_time_series_stats(df, prefix):
     return stats
 
 def plot_time_series(stats, prefix):
-    """繪製叢集數量隨時間變化散點圖並保存"""
+    """畫 scatter 圖顯示 cluster count 隨 frame 變化"""
     fig, ax = plt.subplots()
     ax.scatter(stats['frame'], stats['cluster_count'], color='blue', s=100, alpha=0.8)
     ax.set_xlabel('Frame', fontweight='bold')
     ax.set_ylabel('Cluster Count', fontweight='bold')
     ax.tick_params(**tick_params)
-    # ★ 強制 y 軸只顯示整數
+    # ★ 令 y 軸淨係顯示整數
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.xlim(stats['frame'].min(), stats['frame'].max()+1)
     plt.tight_layout()
@@ -108,7 +108,7 @@ def plot_time_series(stats, prefix):
     plt.close(fig)
 
 def plot_cluster_heatmap(df, prefix):
-    """繪製叢集大小分佈熱圖，使用 pcolormesh 保持網格大小可控"""
+    """用 pcolormesh 畫 heatmap，方便調整格仔大小"""
     pivot = pd.crosstab(df['cluster_size'], df['frame'])
     data = pivot.values
     masked = np.ma.masked_where(data == 0, data)
@@ -134,11 +134,16 @@ def plot_cluster_heatmap(df, prefix):
     ax.set_yticklabels(pivot.index)
 
     cbar = fig.colorbar(pcm, ax=ax)
+    # ★ 強制 colorbar 只顯示整數
+    from matplotlib.ticker import MaxNLocator
+    cbar.locator = MaxNLocator(integer=True)
+    cbar.update_ticks()
+
     cbar.set_label('Count', fontweight='bold')
 
     plt.tight_layout()
     out_pdf = f"cluster_heatmap_{prefix}.pdf"
-    plt.savefig(out_pdf, dpi=1200,bbox_inches='tight', transparent=True)
+    plt.savefig(out_pdf, dpi=1200, bbox_inches='tight', transparent=True)
     print(f"Saved heatmap with pcolormesh: {out_pdf}")
     plt.close(fig)
 
