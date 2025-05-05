@@ -56,7 +56,7 @@ if __name__ == "__main__":
     colors = [cmap(i) for i in color_indices]
 
     # 畫圖
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(5, 3.8))
     scatter = plt.scatter(
         end_frame_counts.index,
         end_frame_counts.values,
@@ -73,10 +73,13 @@ if __name__ == "__main__":
         else:
             plt.scatter([], [], c=[cmap(i)], label=f"{ranges[i-1] + 1} - {r}")
     plt.scatter([], [], c=[cmap(len(ranges))], label=f"> {ranges[-1]}")
-    plt.legend(title="Duration Ranges")
+
+    # 設置圖例為兩列並使其背景透明
+    legend = plt.legend(title="Frame Duration Ranges", frameon=True, ncol=2)  # 設置圖例為兩列
+    legend.get_frame().set_alpha(0.0)  # 設置圖例背景透明
 
     # 設置圖表屬性
-    plt.xlabel("Frame")
+    plt.xlabel("Frame (each for 0.01ps)")
     plt.ylabel("Molecules Number")
     plt.title("Stable F2 Molecules Number")
     plt.tight_layout()
