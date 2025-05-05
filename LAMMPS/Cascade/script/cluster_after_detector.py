@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # 根據範圍分配顏色
     color_indices = assign_colors(duration_means[end_frame_counts.index], ranges)
-    cmap = plt.cm.get_cmap("tab10", len(ranges) + 1)  # 使用高對比度 colormap
+    cmap = plt.cm.get_cmap("rainbow", len(ranges) + 1)  # 使用彩虹色 colormap
     colors = [cmap(i) for i in color_indices]
 
     # 畫圖
