@@ -7,7 +7,7 @@ import argparse
 plt.rcParams.update({
     'font.weight': '400',
     'axes.labelweight': '400',
-    'axes.linewidth': '2',
+    'axes.linewidth': 2,
     'axes.titlesize': 12,
     'axes.labelsize': 12,
     'legend.fontsize': 13,
@@ -19,22 +19,19 @@ tick_params = {'direction': 'in', 'width': 2, 'length': 6}
 def parse_args():
     parser = argparse.ArgumentParser(description="Cluster analysis with custom ranges.")
     parser.add_argument("-r", "--ranges", type=str, required=True,
-                        help="Ranges for coloring, e.g., 70-90-130-150-200")
+                        help="Ranges for coloring, e.g., 69-90-130-200")
     return parser.parse_args()
 
 def assign_colors(values, ranges):
     """根據範圍分配顏色"""
     colors = []
     for value in values:
-        if value <= 70:  # 小於等於 70 的數據用藍色
-            colors.append(0)  # 藍色索引
+        for i, r in enumerate(ranges):
+            if value <= r:
+                colors.append(i)  # 分配顏色索引
+                break
         else:
-            for i, r in enumerate(ranges):
-                if value <= r:
-                    colors.append(i + 1)  # 其他範圍的顏色索引
-                    break
-            else:
-                colors.append(len(ranges) + 1)  # 超過最大範圍的顏色
+            colors.append(len(ranges))  # 超過最大範圍的顏色
     return colors
 
 if __name__ == "__main__":
@@ -55,7 +52,7 @@ if __name__ == "__main__":
 
     # 根據範圍分配顏色
     color_indices = assign_colors(duration_means[end_frame_counts.index], ranges)
-    cmap = plt.cm.get_cmap("tab10", len(ranges) + 2)  # 使用高對比度 colormap
+    cmap = plt.cm.get_cmap("tab10", len(ranges) + 1)  # 使用高對比度 colormap
     colors = [cmap(i) for i in color_indices]
 
     # 畫圖
@@ -65,21 +62,17 @@ if __name__ == "__main__":
         end_frame_counts.values,
         c=colors,
         edgecolors="black",
-        s=80,
-        alpha=0.9
+        s=100,
+        alpha=1
     )
 
     # 添加圖例
-    if ranges[0] > 70:  # 如果範圍的第一個值大於 70，則單獨添加藍色圖例
-        plt.scatter([], [], c=[cmap(0)], label="<= 70")  # 藍色
-
     for i, r in enumerate(ranges):
-        if i == 0 and r == 70:  # 如果範圍的第一個值是 70，直接標註為 "<= 70"
-            plt.scatter([], [], c=[cmap(i + 1)], label=f"<= {r}")
+        if i == 0:
+            plt.scatter([], [], c=[cmap(i)], label=f"<= {r}")
         else:
-            plt.scatter([], [], c=[cmap(i + 1)], label=f"{ranges[i-1] + 1 if i > 0 else 71} - {r}")
-
-    plt.scatter([], [], c=[cmap(len(ranges) + 1)], label=f"> {ranges[-1]}")
+            plt.scatter([], [], c=[cmap(i)], label=f"{ranges[i-1] + 1} - {r}")
+    plt.scatter([], [], c=[cmap(len(ranges))], label=f"> {ranges[-1]}")
     plt.legend(title="Duration Ranges")
 
     # 設置圖表屬性
@@ -99,4 +92,4 @@ if __name__ == "__main__":
         "duration_mean": [duration_means.get(end_frame, 0) for end_frame in end_frame_counts.index],
         "color_index": color_indices
     })
-    output_df.to_csv("collect_end_frame_counts_with_high_contrast.csv", index=False)
+    output_df.to_csv("collect_end_frame_counts_with_custom_ranges.csv", index=False)
