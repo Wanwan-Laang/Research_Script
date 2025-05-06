@@ -49,7 +49,7 @@ if __name__ == "__main__":
     """
     使用示例：
     1. 運行腳本並指定顏色範圍：
-       python cluster_after_detector_all_1.py -r 69-90-130-200
+       python cluster_after_detector.py -r 69-90-130-200
 
     2. 輸入數據文件：
        cluster_stable_F2_1.43.csv，包含以下列：
