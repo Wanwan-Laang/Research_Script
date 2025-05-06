@@ -20,9 +20,12 @@ def parse_args():
     """
     解析命令行參數。
 
+    -f, --file: 指定輸入文件。
     -r, --ranges: 指定顏色分段範圍，例如 69-90-130-200。
     """
     parser = argparse.ArgumentParser(description="Cluster analysis with custom ranges.")
+    parser.add_argument("-f", "--file", type=str, required=True,
+                        help="Input CSV file, e.g., cluster_stable_F2_1.43.csv")
     parser.add_argument("-r", "--ranges", type=str, required=True,
                         help="Ranges for coloring, e.g., 69-90-130-200")
     return parser.parse_args()
@@ -48,8 +51,8 @@ def assign_colors(values, ranges):
 if __name__ == "__main__":
     """
     使用示例：
-    1. 運行腳本並指定顏色範圍：
-       python cluster_after_detector.py -r 69-90-130-200
+    1. 運行腳本並指定輸入文件和顏色範圍：
+       python cluster_after_detector_all_1.py -f cluster_stable_F2_1.43.csv -r 69-90-130-200
 
     2. 輸入數據文件：
        cluster_stable_F2_1.43.csv，包含以下列：
@@ -67,7 +70,8 @@ if __name__ == "__main__":
     print(f"Using ranges: {ranges}")
 
     # 讀取數據
-    df = pd.read_csv("cluster_stable_F2_1.43.csv")
+    df = pd.read_csv(args.file)  # 使用 -f 指定的文件
+    print(f"Loaded data from {args.file}")
 
     # 計算每個 end_frame 的分佈數量
     end_frame_counts = df["end_frame"].value_counts().sort_index()
