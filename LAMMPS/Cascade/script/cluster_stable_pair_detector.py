@@ -191,7 +191,7 @@ def main():
         max_r = np.max(arr)
         p95_r = np.percentile(arr, 95)
 
-        plt.figure(figsize=(8, 5))
+        plt.figure(figsize=(5, 3.8))
         plt.hist(arr, bins=50, alpha=0.8, label="Δr_COM",color='orange')
         #plt.axvline(args.track_dist, color='r', linestyle='--', label=f'track_dist = {args.track_dist:.2f} Å')
         plt.axvline(mean_r, color='g', linestyle='--', label=f'mean = {mean_r:.2f} Å')
