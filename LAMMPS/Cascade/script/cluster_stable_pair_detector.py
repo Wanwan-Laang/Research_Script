@@ -190,7 +190,9 @@ def main():
     stable = detect_stable_F2(frames_com, args.track_dist, args.persist)
     df = pd.DataFrame(stable,
         columns=['start_frame','end_frame','duration','com_x','com_y','com_z'])
-    out = f"cluster_stable_F2_{args.persist}.csv"
+    
+    # 使用 track-dist 作為文件名的一部分
+    out = f"cluster_stable_F2_{args.track_dist:.1f}.csv"
     df.to_csv(out, index=False)
     print(f"Detected {len(df)} stable F₂ → {out}")
 
