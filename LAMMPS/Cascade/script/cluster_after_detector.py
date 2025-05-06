@@ -17,13 +17,24 @@ plt.rcParams.update({
 tick_params = {'direction': 'in', 'width': 2, 'length': 6}
 
 def parse_args():
+    """
+    解析命令行參數。
+
+    -r, --ranges: 指定顏色分段範圍，例如 69-90-130-200。
+    """
     parser = argparse.ArgumentParser(description="Cluster analysis with custom ranges.")
     parser.add_argument("-r", "--ranges", type=str, required=True,
                         help="Ranges for coloring, e.g., 69-90-130-200")
     return parser.parse_args()
 
 def assign_colors(values, ranges):
-    """根據範圍分配顏色"""
+    """
+    根據範圍分配顏色。
+
+    :param values: 數據值列表。
+    :param ranges: 顏色分段範圍。
+    :return: 每個值對應的顏色索引列表。
+    """
     colors = []
     for value in values:
         for i, r in enumerate(ranges):
@@ -35,6 +46,20 @@ def assign_colors(values, ranges):
     return colors
 
 if __name__ == "__main__":
+    """
+    使用示例：
+    1. 運行腳本並指定顏色範圍：
+       python cluster_after_detector_all_1.py -r 69-90-130-200
+
+    2. 輸入數據文件：
+       cluster_stable_F2_1.43.csv，包含以下列：
+       - end_frame: 結束幀數
+       - duration: 持續時間
+
+    3. 輸出：
+       - 圖表：fig_stable_F2_molecules_number_rainbow.pdf
+       - CSV 文件：collect_end_frame_counts_with_custom_ranges.csv
+    """
     args = parse_args()
 
     # 解析範圍參數
@@ -42,7 +67,7 @@ if __name__ == "__main__":
     print(f"Using ranges: {ranges}")
 
     # 讀取數據
-    df = pd.read_csv("cluster_stable_F2_70.csv")
+    df = pd.read_csv("cluster_stable_F2_1.43.csv")
 
     # 計算每個 end_frame 的分佈數量
     end_frame_counts = df["end_frame"].value_counts().sort_index()
@@ -86,7 +111,7 @@ if __name__ == "__main__":
     plt.tick_params(**tick_params)
 
     # 保存圖表
-    plt.savefig("fig_stable_F2_molecules_number_100.pdf", dpi=900, transparent=True, bbox_inches='tight')
+    plt.savefig("fig_stable_F2_molecules_number_rainbow.pdf", dpi=900, transparent=True, bbox_inches='tight')
 
     # 將結果保存到 CSV
     output_df = pd.DataFrame({
@@ -95,4 +120,4 @@ if __name__ == "__main__":
         "duration_mean": [duration_means.get(end_frame, 0) for end_frame in end_frame_counts.index],
         "color_index": color_indices
     })
-    output_df.to_csv("collect_end_frame_counts_with_custom_ranges.csv", index=False)
+    output_df.to_csv("collect_end_frame_counts_with_custom_ranges.csv", index=True)
