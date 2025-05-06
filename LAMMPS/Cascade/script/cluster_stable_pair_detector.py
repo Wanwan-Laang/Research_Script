@@ -192,7 +192,7 @@ def main():
         columns=['start_frame','end_frame','duration','com_x','com_y','com_z'])
     
     # 使用 track-dist 作為文件名的一部分
-    out = f"cluster_stable_F2_{args.track_dist:.1f}.csv"
+    out = f"cluster_stable_F2_{args.track_dist:.2f}.csv"
     df.to_csv(out, index=False)
     print(f"Detected {len(df)} stable F₂ → {out}")
 
