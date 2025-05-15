@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
+# python plot.py -i data.log  -l 
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
