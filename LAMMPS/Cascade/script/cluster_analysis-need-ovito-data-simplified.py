@@ -1,4 +1,4 @@
-#python cluster_analysis_simplified.py -p raw-init-peak  -s 10
+# python cluster_analysis_simplified.py -p raw-init-peak  -s 10
 import os
 import re
 import glob
@@ -22,13 +22,14 @@ plt.rcParams.update({
 tick_params = {'direction': 'in', 'width': 2, 'length': 6}
 
 # 固定順序
-CATEGORY_ORDER = ["free F", "1 Be", "2 Be", "3 Be", "polymer"]
+CATEGORY_ORDER = ["free F", "1 Be", "2 Be", "3 Be", "4 Be", "polymer"]
 CATEGORY_MAP = {
     "free F": lambda s: s == 1,
-    "1 Be":   lambda s: 3 <= s <= 5,
-    "2 Be":   lambda s: s == 9,
-    "3 Be":   lambda s: s == 13,
-    "polymer":lambda s: s >= 17
+    "1 Be":   lambda s: 2 <= s <= 6,
+    "2 Be":   lambda s: 7 <= s <= 10,
+    "3 Be":   lambda s: 11 <= s <= 14,
+    "4 Be":   lambda s: 15 <= s <= 18,
+    "polymer":lambda s: s >= 19
 }
 
 def parse_args():
@@ -94,11 +95,12 @@ def plot_heatmap(df, prefix):
     cbar.update_ticks()
     cbar.set_label('Count', fontweight='400')
 
-    for i in range(ny):
-        for j in range(nx):
-            val = data[i, j]
-            if val > 0:
-                ax.text(j + 0.5, i + 0.5, str(val), ha='center', va='center', fontsize=8, color='white')
+    # Optional: Add text annotations for each cell
+    #for i in range(ny):
+    #    for j in range(nx):
+    #        val = data[i, j]
+    #        if val > 0:
+    #            ax.text(j + 0.5, i + 0.5, str(val), ha='center', va='center', fontsize=8, color='white')
 
     plt.tight_layout()
     plt.savefig(f"category_heatmap_{prefix}.pdf", dpi=1200, bbox_inches='tight', transparent=True)
