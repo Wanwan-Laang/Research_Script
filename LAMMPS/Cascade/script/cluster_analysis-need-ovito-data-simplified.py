@@ -1,3 +1,4 @@
+#python cluster_analysis_simplified.py -p raw-init-peak  -s 10
 import os
 import re
 import glob
