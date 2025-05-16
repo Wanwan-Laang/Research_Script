@@ -1,6 +1,6 @@
 # ------------------------------------------------------------
 # FLiBe PKA Collision Cascade Simulation Script
-# Date: 2025-05-07
+# Date: 2025-05-02
 # 說明：
 # 此腳本經由參數化管理、模組化區分不同階段，
 # 以及針對高能碰撞階段使用短時間步長等改善，
@@ -33,6 +33,7 @@ variable rep          equal 10                 # 複製倍數
 # 定義內部區域（參數化區域邊界）
 variable interior_min equal 10.0
 variable interior_max equal 76.1
+variable interior_z_m equal 100.0
 
 # 定義各模擬階段的時間步長（ps）
 variable ts_equil           equal 0.001          # 平衡階段：1 fs
@@ -41,12 +42,16 @@ variable ts_intermediate    equal 0.0001         # 中間階段：0.1 fs
 variable ts_post            equal 0.0001         # 後續演化： → 0.1 fs
   
 # 定義各階段步數（依照時間步長及總模擬時間調整）
-variable steps_equil        equal 10000          # 平衡階段：10,000步 →  10 ps
-variable steps_collision    equal 3000000          # 碰撞瞬間：20,000步 →  0.2 ps; now 3,000,000步 → 30 ps
+variable steps_equil        equal 30000          # 改變了,平衡階段：30,000步 →  30 ps
+variable steps_collision    equal 20000          # 碰撞瞬間：20,000步 →  0.2 ps
+variable steps_collision2   equal 3000000        # 改變了, now 3,000,000步 → 30 ps
+
 variable steps_intermediate equal 20000          # 中間階段：20,000步 →  2 ps
 variable steps_post         equal 100000         # 後續演化：  → 100,000   10 ps 
 
+variable thermo_equil_step  equal 300            # 改變了, 設定平衡態時候的 熱力學輸出步長
 variable thermo_step        equal 100            # 設定熱力學輸出步長
+variable thermo_step2       equal 5000           # 改變了, 設定第二段的     熱力學輸出步長
 
 # ============================================================
 # 2. 建立晶體結構與初始配置
@@ -66,7 +71,7 @@ replicate       ${rep} ${rep} ${rep}
 # ============================================================
 # 3. 勢函數定義
 # ============================================================
-pair_style hybrid/overlay deepmd ../../se_32.compress.pb zbl 0.82 1.24
+pair_style hybrid/overlay deepmd ../../dpa-compress.pb zbl 0.86 1.18
 pair_coeff * * deepmd
 pair_coeff 1 1 zbl 9.0 9.0
 pair_coeff 1 2 zbl 9.0 4.0
@@ -82,8 +87,8 @@ pair_coeff 3 3 zbl 3.0 3.0
 # sqrt((Position.X - 39.6)^2 + (Position.Y - 37.8)^2 + (Position.Z - 4.9)^2) < 1
 # ============================================================
 region          rallatoms block INF INF INF INF INF INF
-region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} 0.0 ${interior_max} 
-region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} 0.0 ${interior_max}  side out
+region          rinterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} 0.0 ${interior_z_m} 
+region          rexterior block ${interior_min} ${interior_max} ${interior_min} ${interior_max} 0.0 ${interior_z_m}  side out
 region          rPKA sphere 39.6 37.8 4.9 1.0 
 
 group           all        region rallatoms           #  全系原子
@@ -158,11 +163,11 @@ timestep        ${ts_equil}
 fix             1 all nve
 fix             2 all langevin ${initTemp} ${initTemp} 0.001 ${seed} zero yes
 
-dump            10 all      custom ${thermo_step} dump.equil1_all        id type xu yu zu 
-dump            11 interior custom ${thermo_step} dump.equil1_interior   id type xu yu zu c_peInt c_keInt
-dump            12 PKA      custom ${thermo_step} dump.equil1_PKA        id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
+dump            10 all      custom ${thermo_equil_step} dump.equil1_all        id type xu yu zu 
+dump            11 interior custom ${thermo_equil_step} dump.equil1_interior   id type xu yu zu c_peInt c_keInt
+dump            12 PKA      custom ${thermo_equil_step} dump.equil1_PKA        id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
 
-thermo          ${thermo_step}
+thermo          ${thermo_equil_step}
 thermo_style    custom v_simTime elapsed dt step temp c_sys c_ex c_in c_PKAin pe etotal press
 run             ${steps_equil}
 
@@ -175,11 +180,11 @@ unfix           2
 timestep        ${ts_equil}
 fix             3 exterior langevin ${initTemp} ${initTemp} 0.001 ${seed} zero yes
 
-dump            13 all      custom ${thermo_step} dump.equil2_all        id type xu yu zu 
-dump            14 interior custom ${thermo_step} dump.equil2_interior   id type xu yu zu c_peInt c_keInt
-dump            15 PKA      custom ${thermo_step} dump.equal2_PKA        id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
+dump            13 all      custom ${thermo_equil_step} dump.equil2_all        id type xu yu zu 
+dump            14 interior custom ${thermo_equil_step} dump.equil2_interior   id type xu yu zu c_peInt c_keInt
+dump            15 PKA      custom ${thermo_equil_step} dump.equal2_PKA        id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
 
-thermo          ${thermo_step}
+thermo          ${thermo_equil_step}
 thermo_style    custom v_simTime elapsed dt step temp c_sys c_ex c_in c_PKAin pe etotal press 
 run             ${steps_equil}
 
@@ -194,7 +199,7 @@ unfix           3
 variable pka_mass   equal 18.998  
 
 # 設定 PKA 能量 eV
-variable pka_energy equal 1000  
+variable pka_energy equal 3000  
 
 # 利用能量公式計算 PKA 速度
 # 注意：103.6427 為metal單位換算常數,   Å/ps
@@ -219,14 +224,14 @@ velocity PKA set ${pka_vx} ${pka_vy} ${pka_vz} units box
 # 10. 碰撞初期
 # ============================================================
 
-# 確保所有原子在模擬過程中始終以其初始中心為參考進行重新平移，從而消除整體平移帶來的影響。
+# 4: 確保所有原子在模擬過程中始終以其初始中心為參考進行重新平移，從而消除整體平移帶來的影響。
+# 5: 用於消除系統中可能由於數值誤差或其他原因產生的總動量漂移，確保系統總動量為零，從而避免整體平移或旋轉的累積誤差。
 fix             4 all recenter INIT INIT INIT units box
-
-# 用於消除系統中可能由於數值誤差或其他原因產生的總動量漂移，確保系統總動量為零，從而避免整體平移或旋轉的累積誤差。
 fix             5 all momentum 1 linear 1 1 1 angular
 
+# 第一段：細粒度輸出
 timestep        ${ts_collision}
-thermo          10
+thermo          20
 thermo_style    custom v_simTime elapsed dt step temp c_sys c_ex c_in c_PKAin pe etotal press v_msdF_total v_msdBe_total v_msdLi_total
 thermo_modify   lost warn   #提醒丟失原子情況，不中斷模擬.
 
@@ -237,3 +242,13 @@ run             ${steps_collision}
 undump          1001
 undump          1002
 undump          1003
+
+# 第二段：粗粒度輸出
+thermo          ${thermo_step2}                       # 改成 5000 步輸出
+dump            2001 all      custom ${thermo_step2} dump.init2_all       id type xu yu zu  
+dump            2002 interior custom ${thermo_step2} dump.init2_interior  id type xu yu zu c_peInt c_keInt
+dump            2003 PKA      custom ${thermo_step2} dump.init2_PKA       id type xu yu zu c_pePKA c_kePKA c_displacePKA[4]
+run             ${steps_collision2}
+undump          2001
+undump          2002
+undump          2003
