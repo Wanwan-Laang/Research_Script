@@ -82,7 +82,10 @@ def plot_heatmap(df, prefix):
     cmap = plt.cm.viridis
     cmap.set_bad(color='white')
     pcm = ax.pcolormesh(X, Y, masked, cmap=cmap, shading='flat')
-
+    
+    #ax.set_aspect('equal') # 強制每個 cell 為正方形
+    #ax.set_aspect( nx/ny ) # 或者自訂整張圖的長寬比為 nx:ny
+    
     ax.set_xlabel('Frame', fontweight='400')
     ax.set_ylabel('Cluster Type', fontweight='400')
     ax.set_xticks(np.arange(nx) + 0.5)
