@@ -39,6 +39,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
+plt.rcParams.update({
+    'font.family': 'Times New Roman',
+    'font.weight': 'bold',
+    'axes.labelweight': 'bold',
+    'axes.linewidth': 2,
+    'axes.titlesize': 15,
+    'axes.labelsize': 15,
+    'legend.fontsize': 15,
+    'xtick.labelsize': 13,
+    'ytick.labelsize': 13
+})
+plt.tick_params(axis='both', direction='in')
+
 def parse_args():
     parser = argparse.ArgumentParser(description="繪製 LAMMPS log 資料的時間演化圖")
     parser.add_argument("-i", "--input", default="data.log", help="LAMMPS log 檔案")
@@ -77,7 +90,7 @@ def parse_log_lammps(path, header_skip):
 
 def plot_single(fig_name, x, y, xlabel, ylabel, title, color):
     plt.figure()
-    plt.plot(x, y, color=color)
+    plt.plot(x, y, color=color, linewidth=3)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.xlim(x[0], x[-1])
@@ -92,7 +105,7 @@ def plot_step_log_evolution(steps, data_map, out_png, color_map):
     for i, key in enumerate(keys):
         row, col = divmod(i, 4)
         y, ylabel = data_map[key]
-        axs[row][col].plot(steps, y, color=color_map[key])
+        axs[row][col].plot(steps, y, color=color_map[key], linewidth=3)
         axs[row][col].set_xscale('log')
         axs[row][col].set_xlabel("Step (log)")
         axs[row][col].set_ylabel(ylabel)
@@ -137,7 +150,7 @@ if __name__ == "__main__":
     for i, key in enumerate(keys_to_plot):
         row, col = divmod(i, 4)
         y, ylabel = data_map[key]
-        axs[row][col].plot(x, y, color=color_map[key])
+        axs[row][col].plot(x, y, color=color_map[key], linewidth=3)
         axs[row][col].set_xlabel(x_label)
         axs[row][col].set_ylabel(ylabel)
         axs[row][col].grid(True)
