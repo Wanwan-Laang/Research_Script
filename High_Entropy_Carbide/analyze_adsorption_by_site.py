@@ -20,138 +20,88 @@ hollow_data = [1.088, 1.509, 1.415, 1.703, 1.509, 1.531, 1.693, 1.765, 1.207, 1.
 
 ontop_data =  [1.09, 1.34, 1.61, 1.06, 1.10, 1.66, 1.66, 1.06, 1.09, 1.89, 1.15, 1.75, 1.60, 1.21, 1.66, 1.51, 1.10, 5.92, 1.10, 1.10, 1.86, 1.15, 1.77, 1.07, 1.71, 1.90, 1.73, 1.19, 1.60, 1.35, 1.75, 1.21, 1.87, 1.09, 1.51, 1.10, 1.78, 1.66, 1.61, 1.83]
 
-# 建立總資料與標籤
-configurations = list(range(1, len(bridge_data) + len(hollow_data) + len(ontop_data) + 1))
-adsorption = bridge_data + hollow_data + ontop_data
-sites = (
-    ['bridge'] * len(bridge_data) +
-    ['hollow'] * len(hollow_data) +
-    ['ontop'] * len(ontop_data)
-)
+bridge_index = list(range(1, len(bridge_data) + 1))
+hollow_index = list(range(1, len(hollow_data) + 1))
+ontop_index  = list(range(1, len(ontop_data) + 1))
 
-# 建立 DataFrame
+# 合併所有數據
+adsorption = bridge_data + hollow_data + ontop_data
+site_labels = ['bridge'] * len(bridge_data) + ['hollow'] * len(hollow_data) + ['ontop'] * len(ontop_data)
+site_local_idx = bridge_index + hollow_index + ontop_index
+
+# 建立主 DataFrame
 df = pd.DataFrame({
-    "Configuration": configurations,
+    "POSCAR_Index": site_local_idx,
     "Eadsorption": adsorption,
-    "Site": sites
+    "Site": site_labels
 })
 
-# 繪圖
+# 以 Eadsorption 升序排序，添加 MergedIndex
+df_sorted = df.sort_values(by="Eadsorption", ascending=True).reset_index(drop=True)
+df_sorted.insert(0, "MergedIndex", df_sorted.index + 1)
+
+
 plt.figure()
 colors = {'bridge': 'green', 'hollow': 'purple', 'ontop': 'blue'}
+for site in df_sorted['Site'].unique():
+    subset = df_sorted[df_sorted['Site'] == site]
+    plt.scatter(subset['MergedIndex'], subset['Eadsorption'], label=site, color=colors[site], marker='o', s=100)
 
-for site in df['Site'].unique():
-    subset = df[df['Site'] == site]
-    plt.scatter(subset['Configuration'], subset['Eadsorption'], label=site, color=colors[site],marker='o', s=60, edgecolors='k')
- # 圓形標記，可以改成 's', '^', 'D', '*', 'x' 等等
-
-# 加入 ZrC 能量基準線
-#zrc_energy = 0.67183667
 zrc_energy = 0.65733667
 plt.axhline(y=zrc_energy, color='red', linestyle='--', linewidth=2, label=f'ZrC: {zrc_energy:.3f}')
 
-# 標籤與圖例
-plt.xlabel("Configuration")
+plt.xlabel("Merged Index (Global Ranking)")
 plt.ylabel("Eadsorption")
-plt.title("High Entropy Carbide Adsorption Energy")
+plt.title("High Entropy Carbide Adsorption Energy (Sorted)")
 plt.legend()
 plt.tight_layout()
 plt.tick_params(axis='both', direction='in')
-plt.savefig("fig-overview-adsorption_energy.pdf", dpi=900, bbox_inches='tight', transparent=True)
+plt.savefig("adsorption_energy.pdf", dpi=900, bbox_inches='tight', transparent=True)
 
-###############################################################
+# === 儲存總表 ===
+df_sorted.to_csv("adsorption_data_full.csv", index=False)
 
-# 定義原始（各自類型內部）POSCAR 編號
-bridge_index = list(range(1, len(bridge_data) + 1))     # 1–80
-hollow_index = list(range(1, len(hollow_data) + 1))     # 1–24
-ontop_index  = list(range(1, len(ontop_data) + 1))      # 1–40
+# === 各 site group 個別排序與導出 ===
+for site in ['bridge', 'hollow', 'ontop']:
+    df_site = df_sorted[df_sorted['Site'] == site].copy()
+    # 仍用全域排序的 MergedIndex，不重新編號
+    df_site.to_csv(f"adsorption_sorted_{site}.csv", index=False)
 
-# 建立主 DataFrame（包含合併後編號與各自原始編號）
-df = pd.DataFrame({
-    "Configuration": list(range(1, len(bridge_data + hollow_data + ontop_data) + 1)),
-    "SiteLocalIndex": bridge_index + hollow_index + ontop_index,
-    "Eadsorption": bridge_data + hollow_data + ontop_data,
-    "Site": ['bridge'] * len(bridge_data) + ['hollow'] * len(hollow_data) + ['ontop'] * len(ontop_data)
-})
+print("✅ 圖形已輸出 adsorption_energy.pdf，數據已輸出 adsorption_data_full.csv, adsorption_sorted_bridge.csv, adsorption_sorted_hollow.csv, adsorption_sorted_ontop.csv")
 
-# 🔁 排序資料（按能量從小到大）
-df = df.sort_values(by=["Eadsorption", "Site", "SiteLocalIndex"], ascending=[True, True, True]).reset_index(drop=True)
-df["Configuration"] = range(1, len(df) + 1)  # 重新編號 Configuration（圖上用）
-
-# 📦 Summary: Total number of configurations and count per site type
-total_count = len(df)
-print(f"📦 Total number of adsorption configurations: {total_count}")
-
-# display order of site types
-site_counts = df['Site'].value_counts().reindex(['bridge', 'hollow', 'ontop'])
-print("🔹 Number of configurations by site type:")
-for site, count in site_counts.items():
-    print(f"  {site:>6}: {count} configurations")
-
-
-# 💎 Identify the most stable configuration (lowest adsorption energy)
-min_row = df.loc[df['Eadsorption'].idxmin()]
-print("\n💎 Most stable adsorption configuration:")
-print(f"  Configuration index: {min_row['Configuration']}")
-print(f"  Site type: {min_row['Site']}")
-print(f"  Adsorption energy: {min_row['Eadsorption']:.3f} eV")
-
-
-print("\n📉 Lowest adsorption energy for each site type:")
-for site in df['Site'].unique():
-    min_site = df[df['Site'] == site].nsmallest(1, 'Eadsorption')
-    merged_idx = int(min_site['Configuration'].values[0])
-    local_idx = int(min_site['SiteLocalIndex'].values[0])
-    eads = float(min_site['Eadsorption'].values[0])
-    print(f"  {site:>6}: Merged #{merged_idx:>2}, POSCAR #{local_idx:>2}, Energy = {eads:.3f} eV")
-
-# 📊 Average and standard deviation of adsorption energies
-print("\n📊 Adsorption energy statistics by site type:")
-for site in df['Site'].unique():
-    mean_val = df[df['Site'] == site]['Eadsorption'].mean()
-    std_val = df[df['Site'] == site]['Eadsorption'].std()
-    print(f"  {site:>6}: Mean = {mean_val:.3f} eV, Std. Dev. = {std_val:.3f} eV")
-
-# === 儲存所有資料為 CSV ===
-df.to_csv("adsorption_data_full.csv", index=False)
-print("✅ 所有構型資料已儲存為 'adsorption_data_full.csv'")
-
-# === 輸出統計摘要到 log ===
+# === Summary Log 輸出 ===
 with open("adsorption_summary.log", "w") as f:
+    total_count = len(df_sorted)
     f.write(f"📦 Total number of adsorption configurations: {total_count}\n\n")
-    
+
+    # 每種 site 構型數
+    site_counts = df_sorted['Site'].value_counts().reindex(['bridge', 'hollow', 'ontop'])
     f.write("🔹 Number of configurations by site type:\n")
     for site, count in site_counts.items():
         f.write(f"  {site:>6}: {count} configurations\n")
-
-    f.write("\n💎 Most stable adsorption configuration:\n")
-    f.write(f"  Configuration index: {min_row['Configuration']}\n")
-    f.write(f"  Site type: {min_row['Site']}\n")
+    
+    # 全體最穩定構型
+    min_row = df_sorted.iloc[0]
+    f.write("\n💎 Most stable adsorption configuration (all sites):\n")
+    f.write(f"  MergedIndex: {min_row['MergedIndex']}\n")
+    f.write(f"  POSCAR_Index: {min_row['POSCAR_Index']}\n")
+    f.write(f"  Site: {min_row['Site']}\n")
     f.write(f"  Adsorption energy: {min_row['Eadsorption']:.3f} eV\n")
 
+    # 各 site 類型的最穩定構型
     f.write("\n📉 Lowest adsorption energy for each site type:\n")
-    for site in df['Site'].unique():
-        min_site = df[df['Site'] == site].nsmallest(1, 'Eadsorption')
-        merged_idx = int(min_site['Configuration'].values[0])
-        local_idx = int(min_site['SiteLocalIndex'].values[0])
-        eads = float(min_site['Eadsorption'].values[0])
-        f.write(f"  {site:>6}: Merged #{merged_idx:>2}, POSCAR #{local_idx:>2}, Energy = {eads:.3f} eV\n")
+    for site in ['bridge', 'hollow', 'ontop']:
+        min_site = df_sorted[df_sorted['Site'] == site].iloc[0]
+        merged_idx = int(min_site['MergedIndex'])
+        poscar_idx = int(min_site['POSCAR_Index'])
+        eads = float(min_site['Eadsorption'])
+        f.write(f"  {site:>6}: Merged #{merged_idx:>2}, POSCAR #{poscar_idx:>2}, Energy = {eads:.3f} eV\n")
 
+    # 各 site 類型的平均值和標準差
     f.write("\n📊 Adsorption energy statistics by site type:\n")
-    for site in df['Site'].unique():
-        mean_val = df[df['Site'] == site]['Eadsorption'].mean()
-        std_val = df[df['Site'] == site]['Eadsorption'].std()
+    for site in ['bridge', 'hollow', 'ontop']:
+        mean_val = df_sorted[df_sorted['Site'] == site]['Eadsorption'].mean()
+        std_val  = df_sorted[df_sorted['Site'] == site]['Eadsorption'].std()
         f.write(f"  {site:>6}: Mean = {mean_val:.3f} eV, Std. Dev. = {std_val:.3f} eV\n")
 
-print("✅ 統計摘要已儲存為 'adsorption_summary.log'")    
-
-# === 額外輸出：各 site 類型分開排序後的 CSV ===
-site_types = ["bridge", "hollow", "ontop"]
-
-for site in site_types:
-    df_site = df[df["Site"] == site].copy()
-    df_site = df_site.sort_values(by=["Eadsorption", "SiteLocalIndex"], ascending=[True, True])
-
-    output_name = f"adsorption_sorted_{site}.csv"
-    df_site.to_csv(output_name, index=False)
-    print(f"✅ 已儲存：{output_name}（按 Eadsorption 排序）")
+print("✅ 統計摘要已儲存為 'adsorption_summary.log'")
