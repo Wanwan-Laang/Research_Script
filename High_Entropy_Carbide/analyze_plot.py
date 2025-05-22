@@ -30,7 +30,7 @@ CLI Usage Examples:
 -l / --plot-log      : Enable log-scale plot of step
 -L / --step-output   : Output filename for log(step) plot
 -a / --appear        : Choose specific quantities to plot separately (temp, press, vol, dens)
---ns                 : Use physical Time (ps) instead of step as X-axis
+--ps                 : Use physical Time (ps) instead of step as X-axis
 
 """
 
