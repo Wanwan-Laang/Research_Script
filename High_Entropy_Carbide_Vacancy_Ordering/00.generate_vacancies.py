@@ -52,8 +52,8 @@ def generate_unique_vacancy_structures(
         os.makedirs(folder, exist_ok=True)
         Poscar(struct).write_file(os.path.join(folder, "POSCAR"))
         
-        # 收集距離數據
-        distance_data.append([f"C{c1_number:03d}", f"C{c2_number:03d}", distance])
+        # 收集距離數據（保留3位小數）
+        distance_data.append([f"C{c1_number:03d}", f"C{c2_number:03d}", round(distance, 3)])
         count_2vac += 1
 
     # 保存距離數據到CSV文件
